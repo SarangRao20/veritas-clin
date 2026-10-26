@@ -32,6 +32,36 @@ flowchart LR
 - **Risk–coverage curve** on test.
 - **Hallucination capture**: fraction of incorrect claims that the policy flagged or abstained on.
 
+## Experimental Results (Colab T4 GPU Benchmark)
+
+Evaluated across the 40-note corpus (20 dev / 20 test) using **Qwen2.5-3B-Instruct** (fp16) for extraction and **DeBERTa-v3-base-mnli-fever-anli** for NLI verification. The decision threshold $\tau^* = 0.35$ was learned exclusively on the dev split and evaluated strictly on the held-out test split.
+
+### 1. Extraction Performance (Test Split)
+
+| Finding Type | Precision | Recall | F1 | True Pos (TP) | False Pos (FP) | False Neg (FN) |
+|---|---|---|---|---|---|---|
+| **Diagnosis** | 77.2% | 100.0% | **87.1%** | 44 | 13 | 0 |
+| **Medication** | 90.6% | 100.0% | **95.1%** | 29 | 3 | 0 |
+| **Follow-up** | 100.0% | 95.0% | **97.4%** | 19 | 0 | 1 |
+| **Aggregate** | 85.2% | 98.9% | **91.5%** | 92 | 16 | 1 |
+
+*Note on False Positives:* The 13 diagnosis FPs correspond precisely to the planted clinical traps (e.g. conditions explicitly noted as *"ruled out"* or appearing only in *"Family history"*), which zero-shot models eagerly extract without verification.
+
+### 2. Calibration & Abstention Policy (Test Split)
+
+| Metric | Measured Value | Significance |
+|---|---|---|
+| **Raw Extraction Precision** | 85.2% | Baseline un-calibrated LLM output |
+| **Accepted Precision ($P_{\text{accept}}$)** | **92.9%** | Precision among claims accepted by policy (+7.7% boost) |
+| **Test Coverage** | **90.7%** | Fraction of claims auto-accepted into chart |
+| **Hallucination Capture Rate** | **56.2%** | Fraction of false-positive claims caught & suppressed |
+| **Expected Calibration Error (ECE)** | **0.1353** (Test), 0.1500 (Dev) | Probability-to-empirical-accuracy error |
+| **Threshold ($\tau^*$)** | **0.3499** | F1-optimal cutoff selected on dev split |
+
+Generated plots are stored under `artifacts/plots/`:
+- `artifacts/plots/calibration.png`: Reliability diagram comparing confidence vs observed empirical accuracy.
+- `artifacts/plots/risk_coverage.png`: Selective risk curve as coverage expands.
+
 ## Quickstart
 
 ```bash

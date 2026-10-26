@@ -53,11 +53,11 @@ def _greedy_match(record: dict, claims: list[VerifiedClaim]) -> tuple[list[bool]
     return correct, used
 
 
-def run_corpus(corpus, extractor, verifier, note_ids):
+def run_corpus(corpus, extractor, verifier, note_ids, split_name: str = "eval"):
     claims_by_note = {}
-    for rec in corpus:
-        if rec["note_id"] not in note_ids:
-            continue
+    matched = [r for r in corpus if r["note_id"] in note_ids]
+    for idx, rec in enumerate(matched, start=1):
+        print(f"[{split_name}] ({idx}/{len(matched)}) extracting & verifying {rec['note_id']}...", flush=True)
         claims_by_note[rec["note_id"]] = extract_and_verify(
             extractor, verifier, rec["text"]
         )
@@ -147,8 +147,8 @@ def run_eval(extractor_kind: str, use_nli: bool, n_notes: int, seed: int) -> dic
     extractor = build_extractor(extractor_kind)
     verifier = Verifier() if use_nli else None
 
-    dev_claims_by_note = run_corpus(corpus, extractor, verifier, dev_ids)
-    test_claims_by_note = run_corpus(corpus, extractor, verifier, test_ids)
+    dev_claims_by_note = run_corpus(corpus, extractor, verifier, dev_ids, split_name="dev")
+    test_claims_by_note = run_corpus(corpus, extractor, verifier, test_ids, split_name="test")
 
     dev = collect(dev_claims_by_note, corpus)
     tau = pick_threshold(dev["scores"], dev["corrects"]) if dev["scores"] else FALLBACK_THRESHOLD

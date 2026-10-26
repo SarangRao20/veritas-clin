@@ -11,7 +11,7 @@ from pathlib import Path
 class Settings:
     # Models
     extract_model: str = "Qwen/Qwen2.5-3B-Instruct"
-    nli_model: str = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli-1outof10"
+    nli_model: str = "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli"
 
     # Max tokens the extractor may generate per note.
     max_new_tokens: int = 512

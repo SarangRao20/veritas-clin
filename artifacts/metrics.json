@@ -1,0 +1,53 @@
+{
+  "config": {
+    "extractor": "hf",
+    "use_nli": true,
+    "n_notes": 40,
+    "seed": 7,
+    "n_claims_test": 108
+  },
+  "extraction": {
+    "diagnosis": {
+      "precision": 0.772,
+      "recall": 1.0,
+      "f1": 0.871,
+      "tp": 44,
+      "fp": 13,
+      "fn": 0
+    },
+    "medication": {
+      "precision": 0.906,
+      "recall": 1.0,
+      "f1": 0.951,
+      "tp": 29,
+      "fp": 3,
+      "fn": 0
+    },
+    "followup": {
+      "precision": 1.0,
+      "recall": 0.95,
+      "f1": 0.974,
+      "tp": 19,
+      "fp": 0,
+      "fn": 1
+    }
+  },
+  "unsupported_claim_rate": 0.148,
+  "calibration": {
+    "ece_dev": 0.15,
+    "ece_test": 0.1353,
+    "threshold": 0.3499,
+    "low_frac": 0.8
+  },
+  "policy": {
+    "coverage": 0.907,
+    "accepted_precision": 0.929,
+    "hallucination_capture": 0.562,
+    "n_incorrect": 16,
+    "decision_counts": {
+      "accept": 98,
+      "flag_for_review": 1,
+      "abstain": 9
+    }
+  }
+}

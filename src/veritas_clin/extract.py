@@ -80,14 +80,15 @@ class HeuristicExtractor:
 
 _PROMPT = (
     "You are a clinical information extraction system.\n"
-    "Extract ONLY findings explicitly affirmed as active/diagnosed for THIS patient.\n"
+    "Extract all:\n"
+    "1. Active Diagnoses (type: 'diagnosis')\n"
+    "2. Discharge Medications (type: 'medication', value is full drug name with dosage and frequency, e.g. 'Losartan 50 mg once daily')\n"
+    "3. Follow-up plans (type: 'followup', e.g. 'Cardiology in 2 weeks')\n\n"
     "Do NOT extract anything that is: ruled out, resolved, unlikely, historical,\n"
     "a family member's condition, or a drug listed only as an allergy.\n"
-    "Return strict JSON, no prose:\n"
+    "Return strict JSON matching this schema:\n"
     '{"findings":[{"type":"diagnosis|medication|followup","value":"...",'
-    '"dosage":null_or_string,"span":"<exact substring copied from the note>"}]}\n'
-    "For followup, value is the full phrase, e.g. \"Cardiology in 2 weeks\".\n"
-    "\n"
+    '"dosage":null_or_string,"span":"<exact substring copied from the note>"}]}\n\n'
     "Example:\n"
     "Note: DISCHARGE SUMMARY\\nAssessment: 1. Hypertension\\n"
     "Medications: 1. Amlodipine 5 mg once daily\\nFollow-up: Primary Care in 7 days.\n"
@@ -96,8 +97,7 @@ _PROMPT = (
     '"span":"1. Hypertension"},{"type":"medication","value":"Amlodipine 5 mg once daily",'
     '"dosage":"5 mg once daily","span":"Amlodipine 5 mg once daily"},'
     '{"type":"followup","value":"Primary Care in 7 days","dosage":null,'
-    '"span":"Primary Care in 7 days"}]}\n'
-    "\n"
+    '"span":"Primary Care in 7 days"}]}\n\n'
     "Note:\n<<<\n{note}\n>>>\n"
     "Output:\n"
 )
@@ -119,7 +119,7 @@ class HuggingFaceExtractor:
         self.model.eval()
 
     def extract(self, note_text: str) -> list[Claim]:
-        prompt = _PROMPT.format(note=note_text)
+        prompt = _PROMPT.replace("{note}", note_text)
         messages = [{"role": "user", "content": prompt}]
         rendered = self.tok.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
         import torch
@@ -145,21 +145,54 @@ class HuggingFaceExtractor:
         scores = out.scores
         if not scores:
             return SETTINGS.token_conf_default
-        probs = torch.stack([s[0] for s in scores])  # (n_new, vocab)
+        logits = torch.stack([s[0] for s in scores])  # (n_new, vocab)
+        probs = torch.softmax(logits, dim=-1)
         ids = out.sequences[0, -n_new:].to(probs.device)
         token_probs = probs.gather(1, ids.unsqueeze(1)).squeeze(1)
-        return token_probs.mean().item()
+        val = token_probs.mean().item()
+        return max(0.0, min(1.0, float(val)))
 
     def _parse(self, text: str, note_text: str, token_conf: float) -> list[Claim]:
-        start, end = text.find("{"), text.rfind("}")
-        if start == -1 or end <= start:
-            return []
+        clean = text.strip()
+        if "```" in clean:
+            clean = re.sub(r"^```[a-zA-Z]*\n?", "", clean)
+            clean = re.sub(r"\n?```$", "", clean)
+
+        findings: list = []
         try:
-            findings = json.loads(text[start : end + 1]).get("findings", [])
+            parsed = json.loads(clean)
+            if isinstance(parsed, list):
+                findings = parsed
+            elif isinstance(parsed, dict):
+                findings = parsed.get("findings", [])
         except json.JSONDecodeError:
-            return []
+            start_bracket = clean.find("[")
+            end_bracket = clean.rfind("]")
+            start_brace = clean.find("{")
+            end_brace = clean.rfind("}")
+
+            candidates = []
+            if start_bracket != -1 and end_bracket > start_bracket:
+                candidates.append(clean[start_bracket : end_bracket + 1])
+            if start_brace != -1 and end_brace > start_brace:
+                candidates.append(clean[start_brace : end_brace + 1])
+
+            for cand in candidates:
+                try:
+                    res = json.loads(cand)
+                    if isinstance(res, list):
+                        findings = res
+                        break
+                    elif isinstance(res, dict) and "findings" in res:
+                        findings = res["findings"]
+                        break
+                except json.JSONDecodeError:
+                    continue
+
         claims: list[Claim] = []
         for item in findings:
+            if not isinstance(item, dict):
+                continue
             ftype = str(item.get("type", "")).strip().lower()
             value = str(item.get("value", "")).strip()
             if ftype not in FindingType._value2member_map_ or not value:
