@@ -1,0 +1,9 @@
+Patient Intake Assessment Note
+Date: 2024-03-12
+Chief Complaint: Severe persistent low mood, loss of interest, feelings of worthlessness
+
+Patient narrative:
+"I haven't left my room in days. I feel completely empty and worthless. Nothing brings me joy anymore. I used to love painting and reading, but now everything feels pointless. I keep thinking about disappearing and not existing anymore. I can't sleep, can't eat, and I cried for most of yesterday afternoon without knowing why. The tiredness is overwhelming; even brushing my teeth feels impossible."
+
+Clinician Observation:
+Affect is blunted. Speech is slow with increased latency. Reports overwhelming exhaustion and inability to concentrate.

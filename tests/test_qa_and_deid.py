@@ -111,3 +111,16 @@ def test_clinical_qa_generates_sbar_synthesis(qa_system):
     assert "[" in sbar["assessment"] or "[" in sbar["grounded_narrative"]
 
 
+def test_api_qa_endpoint_with_sbar():
+    from fastapi.testclient import TestClient
+    from veritas_clin.serve import app
+    with TestClient(app) as client:
+        resp = client.post("/api/qa", json={"question": "trouble sleeping", "patient_id": "P001"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "sbar" in data
+        assert "grounded_narrative" in data["sbar"]
+        assert len(data["sbar"]["grounded_narrative"]) > 0
+
+
+
