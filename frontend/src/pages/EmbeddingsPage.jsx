@@ -4,7 +4,7 @@ import { Panel, Btn, Spinner, Err, MiniBar } from '../components/ui';
 
 const MODELS = ['word2vec', 'glove'];
 
-const SEED_WORDS = ['patient', 'diagnosis', 'metformin', 'cardiac', 'respiratory', 'glucose', 'kidney'];
+const SEED_WORDS = ['hypertension', 'metformin', 'diabetes', 'furosemide', 'kidney', 'glucose', 'wheezing'];
 
 function TrainPanel({ model, onDone }) {
   const [status, setStatus] = useState('idle'); // idle | training | done | error

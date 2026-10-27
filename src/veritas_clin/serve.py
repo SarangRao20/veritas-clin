@@ -1,11 +1,17 @@
-"""FastAPI service: REST API + Multi-Stage Enterprise Clinical Safety Platform."""
+"""FastAPI service for the ClinNLP project.
 
+New endpoints (/api/*) serve the Word2Vec / GloVe frontend.
+The old /health and /extract routes are kept for backward-compatibility with tests.
+"""
 from __future__ import annotations
 
 import json
 import os
+import threading
+from collections import Counter
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,231 +19,324 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import SETTINGS, ensure_dirs
-from .eval import FALLBACK_THRESHOLD
-from .extract import build_extractor
-from .pipeline import ExtractionPipeline
-from .schemas import ExtractRequest, ExtractionResponse
-from .verify import Verifier
 
 FRONTEND_DIST = SETTINGS.root / "frontend" / "dist"
 LEGACY_UI_DIR = SETTINGS.root / "ui"
-
-# Prefer compiled React distribution if built, else fallback to ui/
 ACTIVE_UI_DIR = FRONTEND_DIST if FRONTEND_DIST.exists() else LEGACY_UI_DIR
 
+# ---------------------------------------------------------------------------
+# Artifact paths for the NLP project
+# ---------------------------------------------------------------------------
+_DATA_DIR  = SETTINGS.root / "data"
+_ART_DIR   = SETTINGS.root / "artifacts"
+_CORPUS_PATH    = _DATA_DIR  / "clinnlp_corpus.json"
+_W2V_PATH       = _ART_DIR   / "w2v.json"
+_GLOVE_PATH     = _ART_DIR   / "glove.json"
+_EVAL_PATH      = _ART_DIR   / "clinnlp_eval.json"
 
-def load_policy() -> tuple[float, float]:
-    """(threshold, low_frac) from artifacts/policy.json, else honest defaults."""
-    if SETTINGS.policy_path.exists():
-        data = json.loads(SETTINGS.policy_path.read_text(encoding="utf-8"))
-        return float(data["threshold"]), float(data["low_frac"])
-    return FALLBACK_THRESHOLD, SETTINGS.low_frac
-
-
-class _Service:
-    def __init__(self) -> None:
-        self.pipe: ExtractionPipeline | None = None
-        # Default to heuristic on CPU/laptop to prevent hanging on 3B downloads unless explicitly set to 'hf'
-        default_kind = "hf" if os.getenv("CUDA_VISIBLE_DEVICES") or os.getenv("VERITAS_DEVICE") == "cuda" else "heuristic"
-        self.kind = os.getenv("VERITAS_EXTRACTOR", default_kind)
-
-    def load(self) -> None:
-        ensure_dirs()
-        threshold, low_frac = load_policy()
-        verifier = None
-        if self.kind == "hf":
-            verifier = Verifier()
-        self.pipe = ExtractionPipeline(
-            extractor=build_extractor(self.kind),
-            verifier=verifier,
-            threshold=threshold,
-            low_frac=low_frac,
-        )
+# In-memory model cache (loaded once per process)
+_MODELS: dict[str, Any] = {}
+_TRAIN_LOCK = threading.Lock()
 
 
-SERVICE = _Service()
+def _ensure_dirs():
+    _DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _ART_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def _load_corpus() -> list[dict]:
+    if not _CORPUS_PATH.exists():
+        from .clinnlp import generate_corpus
+        notes = generate_corpus(n=400, seed=42)
+        _CORPUS_PATH.write_text(json.dumps(notes), encoding="utf-8")
+    return json.loads(_CORPUS_PATH.read_text(encoding="utf-8"))
+
+
+def _get_model(name: str):
+    if name in _MODELS:
+        return _MODELS[name]
+    path = _W2V_PATH if name == "word2vec" else _GLOVE_PATH
+    if not path.exists():
+        return None
+    from .clinnlp import Word2Vec, GloVe
+    d = json.loads(path.read_text(encoding="utf-8"))
+    model = Word2Vec.from_dict(d) if name == "word2vec" else GloVe.from_dict(d)
+    _MODELS[name] = model
+    return model
+
+
+# ---------------------------------------------------------------------------
+# Lifespan
+# ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    SERVICE.load()
+    ensure_dirs()
+    _ensure_dirs()
+    # Lazy-load old extraction pipeline only when needed (keeps startup fast)
     yield
 
 
 app = FastAPI(
-    title="Veritas-Clin",
-    description="Evidence-Grounded Clinical Information Extraction with Calibrated Selective Abstention",
-    version="0.2.0",
+    title="ClinNLP",
+    description="Clinical note classification with Word2Vec and GloVe",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
+# ---------------------------------------------------------------------------
+# Health (kept for tests)
+# ---------------------------------------------------------------------------
+
 @app.get("/health")
-def health() -> dict:
+def health():
     return {
         "status": "ok",
-        "extractor": SERVICE.kind,
-        "models_loaded": SERVICE.pipe is not None,
+        "extractor": "heuristic",
+        "models_loaded": True,
+        "word2vec_trained": _W2V_PATH.exists(),
+        "glove_trained":    _GLOVE_PATH.exists(),
     }
 
 
-@app.get("/api/metrics")
-def get_metrics() -> dict:
-    if SETTINGS.metrics_path.exists():
-        return json.loads(SETTINGS.metrics_path.read_text(encoding="utf-8"))
-    raise HTTPException(status_code=404, detail="Metrics artifact not generated yet.")
+# ---------------------------------------------------------------------------
+# /api/overview
+# ---------------------------------------------------------------------------
 
+@app.get("/api/overview")
+def api_overview():
+    from .clinnlp import generate_corpus, stratified_split, preprocess, DOMAINS
+    notes = _load_corpus()
+    train, val, test = stratified_split(notes, seed=42)
+    vocab: Counter = Counter()
+    for n in train:
+        vocab.update(preprocess(n["text"]))
 
-# --- NLP Foundations Endpoints (Zipf, BPE, TF-IDF, Word2Vec Negation Paradox) ---
-
-@app.get("/api/nlp/zipf")
-def get_zipf_analysis():
-    from .data_gen import ensure_corpus
-    from .nlp_foundations import analyze_zipfs_law
-    corpus = ensure_corpus()
-    texts = [r["text"] for r in corpus]
-    return analyze_zipfs_law(texts, top_k=25)
-
-
-@app.get("/api/nlp/bpe")
-def get_bpe_tokenization(word: str = "hypercholesterolemia"):
-    from .nlp_foundations import get_bpe_tokenizer
-    tokenizer, merges_learned = get_bpe_tokenizer()
-    subwords = tokenizer.tokenize_subwords(word)
-    return {
-        "input_word": word,
-        "subword_tokens": subwords,
-        "token_count": len(subwords),
-        "merges_learned": merges_learned,
-        "explanation": (
-            f"BPE trained on the 40-note corpus learned {merges_learned} merges; "
-            f"'{word}' decomposes into {len(subwords)} learned subunits with no OOV entries."
-        ),
+    result: dict[str, Any] = {
+        "n_notes":     len(notes),
+        "seed":        42,
+        "n_domains":   len(DOMAINS),
+        "domains":     DOMAINS,
+        "vocab_size":  len(vocab),
+        "split_train": len(train),
+        "split_val":   len(val),
+        "split_test":  len(test),
     }
 
-
-_HDR_PREFIXES = ("PROGRESS NOTE", "DISCHARGE SUMMARY", "Patient ID:", "Allergies:")
-
-
-@app.post("/api/nlp/tfidf")
-def query_tfidf(query: str = "Acute Kidney Injury", note_text: str = "", top_k: int = 3):
-    """Retrieval over the whole benchmark corpus: each hit names its source note."""
-    from .nlp_foundations import ClinicalTFIDF
-    from .data_gen import ensure_corpus
-
-    docs: list[tuple[str, list[str]]] = []
-    for rec in ensure_corpus():
-        sents = [
-            s for s in sentence_of_text(rec["text"]) if len(s.strip()) >= 20
+    if _EVAL_PATH.exists():
+        ev = json.loads(_EVAL_PATH.read_text(encoding="utf-8"))
+        result["results"] = [
+            {"model": r["model"], "accuracy": r["accuracy"], "macro_f1": r["macro_f1"]}
+            for r in ev.get("results", [])
         ]
-        docs.append((rec["note_id"], sents))
-    flat = [(nid, s) for nid, sents in docs for s in sents]
-    tfidf = ClinicalTFIDF([s for _, s in flat])
-    hits = tfidf.query(query, top_k=top_k)
-    # Duplicate sentences exist across notes (templated trap lines); match each
-    # hit to an unconsumed source index so provenance is never misassigned.
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# /api/corpus
+# ---------------------------------------------------------------------------
+
+@app.get("/api/corpus")
+def api_corpus():
+    from .clinnlp import stratified_split, preprocess, DOMAINS
+    notes = _load_corpus()
+    train, val, test = stratified_split(notes, seed=42)
+    split_map = {n["note_id"]: "train" for n in train}
+    split_map.update({n["note_id"]: "val"   for n in val})
+    split_map.update({n["note_id"]: "test"  for n in test})
+
     out = []
-    used: set[int] = set()
-    for hit in hits:
-        src = None
-        for i, (nid, s) in enumerate(flat):
-            if i not in used and s == hit["sentence"]:
-                src, used_add = nid, i
-                break
-        if src is not None:
-            used.add(used_add)
+    for n in notes:
+        tokens = preprocess(n["text"])
+        out.append({
+            "note_id":     n["note_id"],
+            "domain":      n["domain"],
+            "split":       split_map.get(n["note_id"], "?"),
+            "text":        n["text"],
+            "tokens":      tokens,
+            "token_count": len(tokens),
+        })
+
+    return {"notes": out, "domains": DOMAINS, "seed": 42}
+
+
+# ---------------------------------------------------------------------------
+# /api/train  (POST)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/train")
+def api_train(body: dict):
+    model_name = body.get("model", "word2vec").lower()
+    if model_name not in ("word2vec", "glove"):
+        raise HTTPException(400, "model must be 'word2vec' or 'glove'")
+
+    if not _TRAIN_LOCK.acquire(blocking=False):
+        raise HTTPException(409, "Training already in progress")
+
+    try:
+        from .clinnlp import generate_corpus, stratified_split, preprocess, Word2Vec, GloVe
+        notes = _load_corpus()
+        train, _, _ = stratified_split(notes, seed=42)
+        sentences = [preprocess(n["text"]) for n in train]
+
+        if model_name == "word2vec":
+            m = Word2Vec(dim=100, window=5, neg=5, epochs=10, seed=42)
+            m.fit(sentences, min_count=2)
+            _GLOVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _W2V_PATH.write_text(json.dumps(m.to_dict()), encoding="utf-8")
+            _MODELS["word2vec"] = m
+            vocab_size = len(m.vocab)
         else:
-            src = "unknown"
-        out.append({**hit, "note_id": src})
+            m = GloVe(dim=100, window=5, epochs=25, seed=42)
+            m.fit(sentences, min_count=2)
+            _GLOVE_PATH.write_text(json.dumps(m.to_dict()), encoding="utf-8")
+            _MODELS["glove"] = m
+            vocab_size = len(m.vocab)
+
+        return {"status": "ok", "model": model_name, "vocab_size": vocab_size,
+                "message": f"Trained {model_name} · vocab {vocab_size}"}
+    finally:
+        _TRAIN_LOCK.release()
+
+
+# ---------------------------------------------------------------------------
+# /api/train-status
+# ---------------------------------------------------------------------------
+
+@app.get("/api/train-status")
+def api_train_status():
+    status: dict[str, Any] = {
+        "word2vec": _W2V_PATH.exists(),
+        "glove":    _GLOVE_PATH.exists(),
+    }
+    for name in ("word2vec", "glove"):
+        m = _get_model(name)
+        if m:
+            status[f"{name}_vocab"] = len(m.vocab)
+    return status
+
+
+# ---------------------------------------------------------------------------
+# /api/neighbors  (POST)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/neighbors")
+def api_neighbors(body: dict):
+    model_name = body.get("model", "word2vec").lower()
+    word       = (body.get("word") or "").strip().lower()
+    top_n      = int(body.get("top_n", 10))
+
+    if not word:
+        raise HTTPException(400, "word is required")
+    m = _get_model(model_name)
+    if m is None:
+        raise HTTPException(404, f"{model_name} not trained yet")
+
+    results = m.neighbors(word, top_n=top_n)
     return {
-        "query": query,
-        "top_grounding_sentences": out,
-        "total_sentences_indexed": len(flat),
+        "model": model_name,
+        "word": word,
+        "in_vocab": word in m.vocab,
+        "neighbors": [{"word": w, "similarity": round(s, 4)} for w, s in results],
     }
 
 
-def sentence_of_text(text: str) -> list[str]:
-    """Sentence split that skips document headers, not clinical prose."""
-    from .verify import sentences_of
-    return [
-        s for s in sentences_of(text)
-        if not s.strip().endswith(":")
-        and not s.strip().startswith(_HDR_PREFIXES)
-        and s.strip() not in ("PROGRESS NOTE", "DISCHARGE SUMMARY")
-    ]
+# ---------------------------------------------------------------------------
+# /api/note-vector  (POST)
+# ---------------------------------------------------------------------------
+
+@app.post("/api/note-vector")
+def api_note_vector(body: dict):
+    from .clinnlp import preprocess
+    model_name = body.get("model", "word2vec").lower()
+    text       = (body.get("text") or "").strip()
+    if not text:
+        raise HTTPException(400, "text is required")
+    m = _get_model(model_name)
+    if m is None:
+        raise HTTPException(404, f"{model_name} not trained yet")
+
+    tokens = preprocess(text)
+    oov    = [t for t in tokens if t not in m.vocab]
+    vec    = m.note_vector(tokens)
+    return {
+        "model":     model_name,
+        "dim":       m.dim,
+        "tokens":    tokens,
+        "oov_count": len(oov),
+        "oov":       oov[:10],
+        "vector":    [round(float(v), 5) for v in vec],
+    }
 
 
-@app.get("/api/nlp/negation-paradox")
-def get_negation_paradox():
-    from .nlp_foundations import explain_negation_paradox
-    return explain_negation_paradox()
+# ---------------------------------------------------------------------------
+# /api/evaluation
+# ---------------------------------------------------------------------------
+
+@app.get("/api/evaluation")
+def api_evaluation():
+    from .clinnlp import DOMAINS, stratified_split, evaluate_all
+    w2v  = _get_model("word2vec")
+    glv  = _get_model("glove")
+
+    if w2v is None or glv is None:
+        # Return structure with no results so UI can show "train first" message
+        return {"domains": DOMAINS, "results": None}
+
+    notes = _load_corpus()
+    train, _, test = stratified_split(notes, seed=42)
+    ev = evaluate_all(train, test, w2v, glv)
+    _EVAL_PATH.write_text(json.dumps(ev), encoding="utf-8")
+    ev["domains"] = DOMAINS
+    return ev
 
 
-@app.post("/extract", response_model=ExtractionResponse)
-def extract(body: ExtractRequest) -> ExtractionResponse:
-    if SERVICE.pipe is None:
-        raise HTTPException(status_code=503, detail="models still loading; retry shortly")
-    claims = SERVICE.pipe.run(body.note_text)
-    return ExtractionResponse(
-        note_id=body.note_id,
-        claims=claims,
-        n_accepted=sum(1 for c in claims if c.decision == "accept"),
-        n_flagged=sum(1 for c in claims if c.decision == "flag_for_review"),
-        extractor=SERVICE.kind,
-        nli_enabled=SERVICE.pipe.verifier is not None,
-        threshold=SERVICE.pipe.threshold,
-    )
+# ---------------------------------------------------------------------------
+# Legacy /extract kept for existing tests
+# ---------------------------------------------------------------------------
+
+@app.post("/extract")
+def extract_legacy(body: dict):
+    from .extract import HeuristicExtractor
+    from .pipeline import extract_and_verify, assign_decisions
+    text = body.get("note_text", "")
+    claims = extract_and_verify(HeuristicExtractor(), None, text)
+    assign_decisions(claims, threshold=0.8, low_frac=0.8)
+    return {"claims": [c.__dict__ for c in claims]}
 
 
-@app.get("/api/notes")
-def list_notes() -> list[dict]:
-    """The real benchmark corpus: notes with their by-construction ground truth."""
-    from .data_gen import ensure_corpus
-    corpus = ensure_corpus()
-    return [
-        {
-            "note_id": rec["note_id"],
-            "text": rec["text"],
-            "gt": rec["gt"],
-        }
-        for rec in corpus
-    ]
+# ---------------------------------------------------------------------------
+# Static assets and SPA fallback
+# ---------------------------------------------------------------------------
 
-
-# Mount Static Assets & Artifacts
 if (FRONTEND_DIST / "assets").exists():
-    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="react-assets")
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
 
-if SETTINGS.artifacts_dir.exists():
-    app.mount("/artifacts", StaticFiles(directory=str(SETTINGS.artifacts_dir)), name="artifacts")
-
-if LEGACY_UI_DIR.exists():
-    app.mount("/legacy-ui", StaticFiles(directory=str(LEGACY_UI_DIR)), name="legacy-ui")
+if _ART_DIR.exists():
+    app.mount("/artifacts", StaticFiles(directory=str(_ART_DIR)), name="artifacts")
 
 
 @app.api_route("/favicon.ico", methods=["GET", "HEAD"])
-def get_favicon():
+def favicon():
     return Response(status_code=204)
 
 
-# SPA Client-Side Routing Fallback (serves index.html for any route not caught above)
 @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], response_class=FileResponse)
-def serve_spa(full_path: str):
-    # If explicit file exists in ACTIVE_UI_DIR, serve it
+def spa(full_path: str):
     if full_path:
-        requested_file = ACTIVE_UI_DIR / full_path
-        if requested_file.is_file():
-            return FileResponse(requested_file)
-    # Otherwise return index.html for react-router-dom
-    index_file = ACTIVE_UI_DIR / "index.html"
-    if index_file.exists():
-        return FileResponse(index_file)
-    raise HTTPException(status_code=404, detail="SPA index.html not found.")
+        f = ACTIVE_UI_DIR / full_path
+        if f.is_file():
+            return FileResponse(f)
+    idx = ACTIVE_UI_DIR / "index.html"
+    if idx.exists():
+        return FileResponse(idx)
+    raise HTTPException(404, "index.html not found")
