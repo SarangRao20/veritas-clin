@@ -98,3 +98,16 @@ def test_dense_transformer_retriever_query():
     assert results[0]["score"] > 0.20
     assert "assertion" in results[0]
 
+
+def test_clinical_qa_generates_sbar_synthesis(qa_system):
+    ans = qa_system.answer_question("Has the patient had severe trouble sleeping?", patient_id="P001")
+    assert "sbar" in ans
+    sbar = ans["sbar"]
+    assert "situation" in sbar and len(sbar["situation"]) > 0
+    assert "assessment" in sbar and len(sbar["assessment"]) > 0
+    assert "recommendation" in sbar and len(sbar["recommendation"]) > 0
+    assert "grounded_narrative" in sbar and len(sbar["grounded_narrative"]) > 0
+    # Every assessment must cite at least one Note ID
+    assert "[" in sbar["assessment"] or "[" in sbar["grounded_narrative"]
+
+
