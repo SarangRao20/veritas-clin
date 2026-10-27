@@ -125,25 +125,16 @@ def get_favicon():
     return Response(status_code=204)
 
 
-@app.api_route("/styles.css", methods=["GET", "HEAD"])
-def get_styles():
-    css = ACTIVE_UI_DIR / "styles.css"
-    if css.exists():
-        return FileResponse(css, media_type="text/css")
-    return Response(status_code=204)
-
-
-@app.api_route("/app.js", methods=["GET", "HEAD"])
-def get_app_js():
-    js = ACTIVE_UI_DIR / "app.js"
-    if js.exists():
-        return FileResponse(js, media_type="application/javascript")
-    return Response(status_code=204)
-
-
-@app.api_route("/", methods=["GET", "HEAD"], response_class=FileResponse)
-def serve_root():
+# SPA Client-Side Routing Fallback (serves index.html for any route not caught above)
+@app.api_route("/{full_path:path}", methods=["GET", "HEAD"], response_class=FileResponse)
+def serve_spa(full_path: str):
+    # If explicit file exists in ACTIVE_UI_DIR, serve it
+    if full_path:
+        requested_file = ACTIVE_UI_DIR / full_path
+        if requested_file.is_file():
+            return FileResponse(requested_file)
+    # Otherwise return index.html for react-router-dom
     index_file = ACTIVE_UI_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    raise HTTPException(status_code=404, detail="UI index.html not found.")
+    raise HTTPException(status_code=404, detail="SPA index.html not found.")
