@@ -109,33 +109,70 @@ def get_zipf_analysis():
 
 @app.get("/api/nlp/bpe")
 def get_bpe_tokenization(word: str = "hypercholesterolemia"):
-    from .nlp_foundations import SimpleBPETokenizer
-    tokenizer = SimpleBPETokenizer()
+    from .nlp_foundations import get_bpe_tokenizer
+    tokenizer, merges_learned = get_bpe_tokenizer()
     subwords = tokenizer.tokenize_subwords(word)
     return {
         "input_word": word,
         "subword_tokens": subwords,
         "token_count": len(subwords),
-        "explanation": f"BPE splits complex morphological entity '{word}' into {len(subwords)} subword components to handle Out-Of-Vocabulary (OOV) medical roots."
+        "merges_learned": merges_learned,
+        "explanation": (
+            f"BPE trained on the 40-note corpus learned {merges_learned} merges; "
+            f"'{word}' decomposes into {len(subwords)} learned subunits with no OOV entries."
+        ),
     }
+
+
+_HDR_PREFIXES = ("PROGRESS NOTE", "DISCHARGE SUMMARY", "Patient ID:", "Allergies:")
 
 
 @app.post("/api/nlp/tfidf")
-def query_tfidf(query: str = "Acute Kidney Injury", note_text: str = ""):
+def query_tfidf(query: str = "Acute Kidney Injury", note_text: str = "", top_k: int = 3):
+    """Retrieval over the whole benchmark corpus: each hit names its source note."""
     from .nlp_foundations import ClinicalTFIDF
-    from .verify import sentences_of
-    if not note_text:
-        from .data_gen import ensure_corpus
-        corpus = ensure_corpus()
-        note_text = corpus[0]["text"]
-    sents = sentences_of(note_text)
-    tfidf = ClinicalTFIDF(sents)
-    results = tfidf.query(query, top_k=3)
+    from .data_gen import ensure_corpus
+
+    docs: list[tuple[str, list[str]]] = []
+    for rec in ensure_corpus():
+        sents = [
+            s for s in sentence_of_text(rec["text"]) if len(s.strip()) >= 20
+        ]
+        docs.append((rec["note_id"], sents))
+    flat = [(nid, s) for nid, sents in docs for s in sents]
+    tfidf = ClinicalTFIDF([s for _, s in flat])
+    hits = tfidf.query(query, top_k=top_k)
+    # Duplicate sentences exist across notes (templated trap lines); match each
+    # hit to an unconsumed source index so provenance is never misassigned.
+    out = []
+    used: set[int] = set()
+    for hit in hits:
+        src = None
+        for i, (nid, s) in enumerate(flat):
+            if i not in used and s == hit["sentence"]:
+                src, used_add = nid, i
+                break
+        if src is not None:
+            used.add(used_add)
+        else:
+            src = "unknown"
+        out.append({**hit, "note_id": src})
     return {
         "query": query,
-        "top_grounding_sentences": results,
-        "total_sentences_indexed": len(sents)
+        "top_grounding_sentences": out,
+        "total_sentences_indexed": len(flat),
     }
+
+
+def sentence_of_text(text: str) -> list[str]:
+    """Sentence split that skips document headers, not clinical prose."""
+    from .verify import sentences_of
+    return [
+        s for s in sentences_of(text)
+        if not s.strip().endswith(":")
+        and not s.strip().startswith(_HDR_PREFIXES)
+        and s.strip() not in ("PROGRESS NOTE", "DISCHARGE SUMMARY")
+    ]
 
 
 @app.get("/api/nlp/negation-paradox")
@@ -154,7 +191,25 @@ def extract(body: ExtractRequest) -> ExtractionResponse:
         claims=claims,
         n_accepted=sum(1 for c in claims if c.decision == "accept"),
         n_flagged=sum(1 for c in claims if c.decision == "flag_for_review"),
+        extractor=SERVICE.kind,
+        nli_enabled=SERVICE.pipe.verifier is not None,
+        threshold=SERVICE.pipe.threshold,
     )
+
+
+@app.get("/api/notes")
+def list_notes() -> list[dict]:
+    """The real benchmark corpus: notes with their by-construction ground truth."""
+    from .data_gen import ensure_corpus
+    corpus = ensure_corpus()
+    return [
+        {
+            "note_id": rec["note_id"],
+            "text": rec["text"],
+            "gt": rec["gt"],
+        }
+        for rec in corpus
+    ]
 
 
 # Mount Static Assets & Artifacts

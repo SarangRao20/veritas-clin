@@ -55,3 +55,8 @@ class ExtractionResponse(BaseModel):
     claims: list[VerifiedClaim]
     n_flagged: int
     n_accepted: int
+    # Runtime transparency: lets clients render scores honestly
+    # (heuristic runtimes have no NLI; their score is pure token confidence).
+    extractor: str = "heuristic"
+    nli_enabled: bool = False
+    threshold: float = 0.0

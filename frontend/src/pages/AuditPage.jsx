@@ -1,446 +1,259 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { 
-  ShieldCheck, 
-  CheckCircle2, 
-  XCircle, 
-  Download, 
-  FileText, 
-  Layers, 
-  Sliders, 
-  Play, 
-  ArrowLeft,
-  Copy,
-  AlertTriangle,
-  Code2
-} from 'lucide-react';
-import { PATIENTS_REGISTRY } from '../data/patientsData';
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { getNotes, getHealth, runExtract } from '../api';
+import {
+  DecisionChip, ErrorNote, PageHeader, Panel, ScoreBar, Spinner, TypeChip, fmt,
+} from '../components/ui';
 
 export default function AuditPage() {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const mrnParam = searchParams.get('mrn') || 'VS-002';
+  const initialNoteId = searchParams.get('note');
 
-  const [selectedPatient, setSelectedPatient] = useState(
-    PATIENTS_REGISTRY.find(p => p.mrn === mrnParam) || PATIENTS_REGISTRY[0]
-  );
-  const [activeTab, setActiveTab] = useState('audit'); // 'note' | 'audit' | 'comparison' | 'fhir'
-  const [threshold, setThreshold] = useState(0.35);
-  const [isAuditing, setIsAuditing] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [notes, setNotes] = useState(null);
+  const [notesError, setNotesError] = useState(null);
+  const [health, setHealth] = useState(null);
+
+  const [selectedId, setSelectedId] = useState(initialNoteId ?? null);
+  const [noteText, setNoteText] = useState('');
+
+  const [result, setResult] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState(null);
 
   useEffect(() => {
-    const found = PATIENTS_REGISTRY.find(p => p.mrn === mrnParam);
-    if (found) setSelectedPatient(found);
-  }, [mrnParam]);
+    getNotes()
+      .then((all) => {
+        setNotes(all);
+        const wanted = initialNoteId && all.find((n) => n.note_id === initialNoteId);
+        const chosen = wanted ?? all[0];
+        if (chosen) {
+          setSelectedId(chosen.note_id);
+          setNoteText(chosen.text);
+        }
+      })
+      .catch(setNotesError);
+    getHealth().then(setHealth).catch(() => setHealth(null));
+  }, [initialNoteId]);
 
-  const handleRunAudit = () => {
-    setIsAuditing(true);
-    setTimeout(() => {
-      setIsAuditing(false);
-      setActiveTab('audit');
-    }, 700);
+  const selected = notes?.find((n) => n.note_id === selectedId) ?? null;
+  const nliEnabled = result?.nli_enabled ?? health?.extractor === 'hf';
+
+  const pickNote = (id) => {
+    const n = notes?.find((x) => x.note_id === id);
+    if (!n) return;
+    setSelectedId(n.note_id);
+    setNoteText(n.text);
+    setResult(null);
+    setRunError(null);
   };
 
-  const handleExportFHIR = () => {
-    const approved = selectedPatient.veritasAudit.approvedFindings;
-    const fhirBundle = {
-      resourceType: "Bundle",
-      type: "document",
-      timestamp: new Date().toISOString(),
-      entry: [
-        {
-          resource: {
-            resourceType: "Patient",
-            id: selectedPatient.mrn,
-            name: [{ text: selectedPatient.name }],
-            gender: selectedPatient.gender.toLowerCase(),
-            birthDate: "1962-05-14"
-          }
-        },
-        ...approved.map((item, idx) => ({
-          resource: {
-            resourceType: item.type === "Diagnosis" ? "Condition" : item.type === "Medication" ? "MedicationRequest" : "ServiceRequest",
-            id: `res-${idx}`,
-            code: { text: item.name },
-            note: [{ text: `Verified via DeBERTa-v3 NLI Cross-Encoder (${item.entailment}% entailment). Grounding sentence: "${item.sentence}"` }]
-          }
-        }))
-      ]
-    };
-
-    const blob = new Blob([JSON.stringify(fhirBundle, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `FHIR_${selectedPatient.mrn}_VERITAS_BUNDLE.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const run = async () => {
+    if (!noteText.trim()) return;
+    setRunning(true);
+    setRunError(null);
+    setResult(null);
+    try {
+      const r = await runExtract(selectedId ?? 'adhoc', noteText);
+      setResult(r);
+    } catch (e) {
+      setRunError(e);
+    } finally {
+      setRunning(false);
+    }
   };
 
-  const approved = selectedPatient.veritasAudit.approvedFindings;
-  const blocked = selectedPatient.veritasAudit.blockedHallucinations;
+  const th = 'text-[11px] uppercase tracking-wide text-zinc-500 font-medium px-3 py-2 text-left';
+  const td = 'px-3 py-2.5 text-[13px] text-zinc-800 border-t border-zinc-100 align-top';
 
   return (
-    <div className="flex-1 p-6 lg:p-8 flex flex-col gap-6 max-w-7xl w-full mx-auto">
-      
-      {/* Patient Header Card */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-11 h-11 rounded-lg bg-sky-50 border border-sky-200 flex items-center justify-center text-sky-700 font-bold font-mono text-sm">
-            EHR
-          </div>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="text-xs font-mono font-bold bg-sky-100 text-sky-800 px-2 py-0.5 rounded">
-                MRN: {selectedPatient.mrn}
-              </span>
-              <h2 className="text-base font-bold text-slate-900">{selectedPatient.name}</h2>
-              <span className="text-xs text-slate-500 font-mono hidden sm:inline">&bull; {selectedPatient.age}y {selectedPatient.gender}</span>
-              <span className="text-xs text-slate-500 font-mono hidden sm:inline">&bull; {selectedPatient.ward}</span>
-            </div>
-            <div className="text-xs text-slate-500 mt-1 flex items-center gap-2">
-              <span>Admission: <strong>{selectedPatient.primaryAdmission}</strong></span>
-              <span>&bull;</span>
-              <span>Attending: {selectedPatient.attending}</span>
-            </div>
-          </div>
-        </div>
+    <div>
+      <PageHeader
+        eyebrow="Live pipeline"
+        title="Clinical audit"
+        sub="Run the actual extraction → verification → calibrated abstention pipeline over any note text. The panel on the right is the pipeline's real output, not a canned report; edit the note to test adversarial inputs."
+      />
 
-        {/* Switch Patient Dropdown & Primary Action */}
-        <div className="flex items-center gap-3">
-          <select
-            value={selectedPatient.mrn}
-            onChange={(e) => navigate(`/audit?mrn=${e.target.value}`)}
-            className="text-xs font-semibold px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-800 outline-none focus:border-sky-600"
-          >
-            {PATIENTS_REGISTRY.map(p => (
-              <option key={p.mrn} value={p.mrn}>
-                {p.mrn}: {p.name} ({p.primaryAdmission.split('(')[0]})
-              </option>
-            ))}
-          </select>
+      {notesError && <ErrorNote error={notesError} onRetry={() => window.location.reload()} />}
 
-          <button
-            onClick={handleRunAudit}
-            disabled={isAuditing}
-            className="inline-flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white font-semibold text-xs px-4 py-2 rounded-lg shadow-2xs transition-all"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>{isAuditing ? 'Auditing Sentences...' : 'Run Audit'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Tabs Navigation Bar */}
-      <div className="flex items-center justify-between border-b border-slate-200">
-        <div className="flex items-center gap-6">
-          <button
-            onClick={() => setActiveTab('audit')}
-            className={`pb-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
-              activeTab === 'audit'
-                ? 'border-sky-600 text-sky-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            <span>Safety Audit & Decisions ({approved.length} Safe, {blocked.length} Blocked)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('comparison')}
-            className={`pb-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
-              activeTab === 'comparison'
-                ? 'border-sky-600 text-sky-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Side-by-Side Audit (Standard AI vs Veritas)</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('note')}
-            className={`pb-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
-              activeTab === 'note'
-                ? 'border-sky-600 text-sky-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Source Clinical Dictation</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('fhir')}
-            className={`pb-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
-              activeTab === 'fhir'
-                ? 'border-sky-600 text-sky-600'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Code2 className="w-4 h-4" />
-            <span>HL7 FHIR Interoperability</span>
-          </button>
-        </div>
-
-        {/* Export Action */}
-        <button
-          onClick={handleExportFHIR}
-          className="text-xs font-mono font-semibold text-sky-700 hover:text-sky-900 pb-3 flex items-center gap-1"
-        >
-          <Download className="w-3.5 h-3.5" />
-          <span>Export FHIR JSON</span>
-        </button>
-      </div>
-
-      {/* TAB 1: SAFETY AUDIT & DECISIONS */}
-      {activeTab === 'audit' && (
-        <div className="grid lg:grid-cols-2 gap-6 items-start">
-          
-          {/* Approved Safe Findings (Entered to Chart) */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs border-t-4 border-t-emerald-600">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider font-mono">
-                  Approved & Entered to Patient Chart
-                </h3>
-              </div>
-              <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                {approved.length} SAFE ENTRIES
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {approved.map((item) => (
-                <div 
-                  key={item.id}
-                  className="bg-emerald-50/40 border border-emerald-200 border-l-4 border-l-emerald-600 rounded-lg p-3.5 transition-all hover:bg-emerald-50"
-                >
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-bold text-slate-900 text-sm">{item.name}</span>
-                    <span className="font-mono text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                      {item.type}
-                    </span>
-                  </div>
-
-                  {item.dosage && (
-                    <span className="inline-block text-xs font-mono text-emerald-900 font-semibold mb-1">
-                      Dosage: {item.dosage}
-                    </span>
-                  )}
-
-                  <div className="mt-2 pt-2 border-t border-emerald-200/60 text-xs">
-                    <div className="font-mono text-[11px] text-emerald-900 bg-white/80 p-1.5 rounded border border-emerald-100 mb-1">
-                      Grounding: &ldquo;{item.sentence}&rdquo;
-                    </div>
-                    <div className="flex items-center justify-between text-[11px] font-mono text-emerald-700 mt-1">
-                      <span>NLI Entailment: <strong>{item.entailment}%</strong></span>
-                      <span>Confidence: <strong>{item.confidence}%</strong></span>
-                    </div>
-                  </div>
-                </div>
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-start">
+        {/* Source column */}
+        <Panel
+          title="Source note"
+          actions={
+            <select
+              value={selectedId ?? ''}
+              onChange={(e) => pickNote(e.target.value)}
+              aria-label="Select benchmark note"
+              className="bg-white border border-zinc-300 rounded-md px-2 py-1 text-[12px] max-w-[220px] truncate focus:outline-none focus:border-blue-500"
+            >
+              {!notes && <option>Loading…</option>}
+              {notes?.map((n) => (
+                <option key={n.note_id} value={n.note_id}>{n.note_id}</option>
               ))}
+            </select>
+          }
+        >
+          <div className="p-3">
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              spellCheck={false}
+              rows={18}
+              aria-label="Note text"
+              className="w-full bg-white border border-zinc-200 rounded-md p-3 text-[12.5px] leading-relaxed font-sans text-zinc-800 resize-y focus:outline-none focus:border-blue-500"
+            />
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-zinc-400">{noteText.length.toLocaleString('en-US')} chars · editable</span>
+              <button
+                onClick={run}
+                disabled={running || !noteText.trim()}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600 text-white rounded-md px-3.5 py-1.5 text-[13px] font-medium"
+              >
+                {running ? 'Running pipeline…' : 'Run audit'}
+              </button>
             </div>
           </div>
+        </Panel>
 
-          {/* Blocked Hallucinations & Contraindicated Traps */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs border-t-4 border-t-red-600">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <div className="flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-red-600" />
-                <h3 className="font-bold text-xs text-slate-900 uppercase tracking-wider font-mono">
-                  Blocked from Patient Record (Safety Valve Engaged)
-                </h3>
-              </div>
-              <span className="text-[11px] font-mono font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded border border-red-200">
-                {blocked.length} SUPPRESSED
-              </span>
+        {/* Results column */}
+        <div className="space-y-4">
+          {health && !health.extractor?.startsWith('hf') && (
+            <div className="border border-zinc-200 bg-zinc-50 rounded-md px-3 py-2 text-[12px] text-zinc-600">
+              This backend runs the <strong className="font-medium">heuristic extractor</strong> (CPU, network-free):
+              the decision score is token confidence (w·conf), and the NLI cross-encoder column is suppressed
+              because it is not loaded. Set <code className="font-mono text-[11px] bg-zinc-100 px-1 rounded">VERITAS_EXTRACTOR=hf</code> on a GPU host to enable NLI scoring.
             </div>
+          )}
 
-            {blocked.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs font-mono border-2 border-dashed border-slate-200 rounded-lg">
-                ✓ Zero hallucinations detected in this record. All extracted claims were verified as safe.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {blocked.map((item) => (
-                  <div 
-                    key={item.id}
-                    className="bg-red-50/50 border border-red-200 border-l-4 border-l-red-600 rounded-lg p-3.5 transition-all hover:bg-red-50"
-                  >
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-bold text-slate-700 text-sm line-through decoration-red-500 decoration-2">
-                        [{item.type}] {item.name}
-                      </span>
-                      <span className="font-mono text-[10px] font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">
-                        Contradiction: {item.contradiction}%
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-red-950 font-medium leading-relaxed mt-1">
-                      {item.blockRationale}
-                    </p>
-
-                    <div className="mt-2 pt-2 border-t border-red-200/60 font-mono text-[11px] text-slate-600">
-                      Doctor note sentence: &ldquo;{item.sentence}&rdquo;
-                    </div>
-                  </div>
+          {selected && (
+            <Panel
+              title="Ground truth (by construction)"
+              sub={`What ${selected.note_id} actually contains — recorded when the corpus was rendered.`}
+            >
+              <ul className="px-4 py-2.5 divide-y divide-zinc-100">
+                {selected.gt.map((g, i) => (
+                  <li key={i} className="flex items-center justify-between gap-3 py-1.5">
+                    <span className="text-[13px] text-zinc-800 truncate">{g.value}</span>
+                    <TypeChip type={g.type} />
+                  </li>
                 ))}
+              </ul>
+            </Panel>
+          )}
+
+          <Panel
+            title="Pipeline output"
+            sub={result
+              ? `${result.n_accepted} auto-accepted · ${result.n_flagged} held for physician review · threshold τ* = ${fmt.round(result.threshold, 4)}`
+              : 'Run the pipeline to populate.'}
+          >
+            {runError && (
+              <div className="p-3">
+                <ErrorNote error={runError} onRetry={run} />
               </div>
             )}
-          </div>
-
-        </div>
-      )}
-
-      {/* TAB 2: SIDE-BY-SIDE AUDIT COMPARISON */}
-      {activeTab === 'comparison' && (
-        <div className="grid lg:grid-cols-2 gap-6 items-start">
-          
-          {/* Left: Standard LLM Baseline Failure */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs border-t-4 border-t-slate-400">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-red-600 uppercase">UNCHECKED ZERO-SHOT</span>
-                <h3 className="font-bold text-sm text-slate-900">Standard AI Baseline Output</h3>
+            {running && <div className="p-4"><Spinner label="Extracting → verifying → deciding" /></div>}
+            {!result && !running && !runError && (
+              <div className="px-4 py-8 text-center text-[12px] text-zinc-400">
+                No audit run for this text yet.
               </div>
-              <span className="text-[11px] font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
-                Prompt-and-Pray
-              </span>
-            </div>
+            )}
 
-            <div className="space-y-3">
-              {selectedPatient.naiveBaseline.map((item, idx) => (
-                <div 
-                  key={idx}
-                  className={`p-3.5 rounded-lg border text-xs ${
-                    item.isError 
-                      ? 'bg-red-50 border-red-300 border-l-4 border-l-red-600'
-                      : 'bg-slate-50 border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-slate-900">{item.name}</span>
-                    {item.isError ? (
-                      <span className="text-[10px] font-mono font-bold text-red-700 bg-red-100 px-1.5 py-0.5 rounded">
-                        ⚠️ {item.errorTag}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-mono text-slate-500">Conf: {item.conf}%</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-600">{item.detail}</p>
+            {result && !running && (
+              result.claims.length === 0 ? (
+                <div className="px-4 py-8 text-center text-[12px] text-zinc-500">
+                  The extractor returned no findings for this text.
                 </div>
-              ))}
-            </div>
-          </div>
+              ) : (
+                <>
+                  {/* Compact cards below md — real tables need width */}
+                  <ul className="md:hidden divide-y divide-zinc-100">
+                    {result.claims.map((c, i) => {
+                      const evidence = c.sentence ?? (c.span_text !== c.value ? c.span_text : null);
+                      return (
+                        <li key={i} className="px-4 py-3 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <TypeChip type={c.type} />
+                            <DecisionChip decision={c.decision} />
+                          </div>
+                          <div className="text-[13px] font-medium text-zinc-900 break-words">{c.value}</div>
+                          {evidence && (
+                            <div className="text-[11px] text-zinc-500 italic break-words">
+                              &ldquo;{evidence}&rdquo;
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <ScoreBar score={c.score} threshold={result.threshold} />
+                            <span className="font-mono text-[12px] text-zinc-600">{fmt.round(c.score, 3)}</span>
+                            {nliEnabled && (
+                              <span className="font-mono text-[11px] text-zinc-400">
+                                · p(entail) {fmt.pct(c.p_entail, 3)}
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
 
-          {/* Right: Veritas Safe Engine */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs border-t-4 border-t-emerald-600">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <div>
-                <span className="text-[10px] font-mono font-bold text-emerald-700 uppercase">VERIFIED & AUDITED</span>
-                <h3 className="font-bold text-sm text-slate-900">Veritas-Clin Safety Engine Output</h3>
-              </div>
-              <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                DeBERTa-v3 Guarded
-              </span>
-            </div>
-
-            <div className="space-y-3">
-              {approved.map((item) => (
-                <div key={item.id} className="p-3.5 rounded-lg border border-emerald-200 bg-emerald-50/50 border-l-4 border-l-emerald-600 text-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-emerald-950 font-sans">✓ {item.name}</span>
-                    <span className="text-[10px] font-mono font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
-                      Entailment: {item.entailment}%
-                    </span>
+                  {/* Dense table at md and up */}
+                  <div className="hidden md:block">
+                    <div className="overflow-x-auto">
+                      <table className="w-full table-fixed">
+                        <colgroup>
+                          <col className="w-[14%]" />
+                          <col />
+                          {nliEnabled && <col className="w-[13%]" />}
+                          <col className="w-[24%]" />
+                          <col className="w-[20%]" />
+                        </colgroup>
+                        <thead>
+                          <tr className="bg-zinc-50">
+                            <th className={th}>Type</th>
+                            <th className={th}>Finding</th>
+                            {nliEnabled && <th className={th}>p(entail)</th>}
+                            <th className={th}>Score</th>
+                            <th className={th}>Decision</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.claims.map((c, i) => {
+                            const evidence = c.sentence ?? (c.span_text !== c.value ? c.span_text : null);
+                            return (
+                              <tr key={i}>
+                                <td className={td}><TypeChip type={c.type} /></td>
+                                <td className={td}>
+                                  <div className="font-medium text-zinc-900 text-[13px] truncate" title={c.value}>{c.value}</div>
+                                  {c.dosage && <div className="text-[11px] text-zinc-500 truncate">{c.dosage}</div>}
+                                  {evidence && (
+                                    <div className="mt-1 text-[11px] text-zinc-500 italic truncate" title={evidence}>
+                                      &ldquo;{evidence}&rdquo;
+                                    </div>
+                                  )}
+                                </td>
+                                {nliEnabled && (
+                                  <td className={`${td} font-mono text-[12px]`}>{fmt.pct(c.p_entail, 3)}</td>
+                                )}
+                                <td className={td}>
+                                  <div className="flex items-center gap-2">
+                                    <ScoreBar score={c.score} threshold={result.threshold} />
+                                    <span className="font-mono text-[12px] text-zinc-600">{fmt.round(c.score, 3)}</span>
+                                  </div>
+                                </td>
+                                <td className={td}><DecisionChip decision={c.decision} /></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-600">{item.auditRationale}</p>
-                </div>
-              ))}
-
-              {blocked.map((item) => (
-                <div key={item.id} className="p-3.5 rounded-lg border border-red-200 bg-red-50/60 border-l-4 border-l-red-600 text-xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-red-900 line-through">🛑 {item.name}</span>
-                    <span className="text-[10px] font-mono font-bold text-red-800 bg-red-100 px-1.5 py-0.5 rounded">
-                      Contradiction: {item.contradiction}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-red-950 font-medium">{item.blockRationale}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
+                </>
+              )
+            )}
+          </Panel>
         </div>
-      )}
-
-      {/* TAB 3: SOURCE CLINICAL DICTATION */}
-      {activeTab === 'note' && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-            <span className="text-xs font-mono font-bold text-slate-500 uppercase">
-              Physician Electronic Record Text
-            </span>
-            <span className="text-xs font-mono text-slate-400">
-              {selectedPatient.rawNote.length} characters &bull; {selectedPatient.rawNote.split('\n').length} lines
-            </span>
-          </div>
-
-          <pre className="p-4 bg-slate-50 rounded-lg border border-slate-200 font-mono text-xs leading-relaxed text-slate-800 whitespace-pre-wrap overflow-x-auto">
-            {selectedPatient.rawNote}
-          </pre>
-        </div>
-      )}
-
-      {/* TAB 4: HL7 FHIR INTEROPERABILITY */}
-      {activeTab === 'fhir' && (
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-            <div>
-              <span className="text-xs font-mono font-bold text-sky-700 uppercase">HL7 FHIR Release 4 Document Bundle</span>
-              <h3 className="text-sm font-bold text-slate-900 mt-0.5">Machine-Readable Interoperability Export</h3>
-            </div>
-            <button
-              onClick={handleExportFHIR}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-sky-600 hover:bg-sky-700 px-3 py-1.5 rounded-lg shadow-2xs"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download JSON</span>
-            </button>
-          </div>
-
-          <pre className="p-4 bg-slate-900 text-sky-300 rounded-lg font-mono text-xs leading-relaxed overflow-x-auto max-h-[500px]">
-            {JSON.stringify({
-              resourceType: "Bundle",
-              type: "document",
-              timestamp: new Date().toISOString(),
-              entry: [
-                {
-                  resource: {
-                    resourceType: "Patient",
-                    id: selectedPatient.mrn,
-                    name: [{ text: selectedPatient.name }]
-                  }
-                },
-                ...approved.map((item, idx) => ({
-                  resource: {
-                    resourceType: item.type === "Diagnosis" ? "Condition" : item.type === "Medication" ? "MedicationRequest" : "ServiceRequest",
-                    id: `res-${idx}`,
-                    code: { text: item.name },
-                    note: [{ text: `Verified via DeBERTa NLI (${item.entailment}% entailment). Grounding: "${item.sentence}"` }]
-                  }
-                }))
-              ]
-            }, null, 2)}
-          </pre>
-        </div>
-      )}
-
+      </div>
     </div>
   );
 }

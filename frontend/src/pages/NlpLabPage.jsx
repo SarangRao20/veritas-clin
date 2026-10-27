@@ -1,381 +1,240 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Binary, 
-  Search, 
-  FileText, 
-  Activity, 
-  Layers, 
-  HelpCircle, 
-  Sparkles, 
-  BarChart2, 
-  Hash, 
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight
-} from 'lucide-react';
+import React from 'react';
+import { useEffect, useState } from 'react';
+import { getBPE, getParadox, getTfIdf, getZipf } from '../api';
+import { Chip, ErrorNote, PageHeader, Panel, Spinner } from '../components/ui';
+
+const BPE_PRESETS = ['hypercholesterolemia', 'pneumonitis', 'encephalopathy', 'bronchodilator', 'metformin'];
 
 export default function NlpLabPage() {
+  const [zipf, setZipf] = useState(null);
+  const [zipfErr, setZipfErr] = useState(null);
+  const [paradox, setParadox] = useState(null);
+  const [paradoxErr, setParadoxErr] = useState(null);
   const [bpeWord, setBpeWord] = useState('pneumonitis');
-  const [bpeTokens, setBpeTokens] = useState(['pneu', 'mon', 'itis']);
-  const [tfidfQuery, setTfidfQuery] = useState('Acute Kidney Injury');
-  const [tfidfResults, setTfidfResults] = useState([]);
-  const [zipfData, setZipfData] = useState(null);
-  const [paradoxData, setParadoxData] = useState(null);
-
-  // Precomputed Didactic BPE splits for common medical terminology
-  const medicalBpeDictionary = {
-    pneumonitis: ['pneu', 'mon', 'itis'],
-    hypercholesterolemia: ['hyper', 'cholester', 'ol', 'emia'],
-    encephalopathy: ['en', 'cephalo', 'pathy'],
-    metformin: ['met', 'form', 'in'],
-    bronchodilator: ['broncho', 'dilat', 'or'],
-    hypertension: ['hyper', 'ten', 'sion'],
-    nephropathy: ['nephro', 'pathy'],
-    losartan: ['los', 'artan']
-  };
-
-  const handleBpeTokenize = (word) => {
-    const clean = word.toLowerCase().trim();
-    setBpeWord(word);
-    if (medicalBpeDictionary[clean]) {
-      setBpeTokens(medicalBpeDictionary[clean]);
-    } else {
-      // Simple fallback character/pair split
-      const chunks = [];
-      for (let i = 0; i < clean.length; i += 3) {
-        chunks.push(clean.slice(i, i + 3));
-      }
-      setBpeTokens(chunks);
-    }
-  };
+  const [bpe, setBpe] = useState(null);
+  const [bpeErr, setBpeErr] = useState(null);
+  const [bpeLoading, setBpeLoading] = useState(false);
+  const [query, setQuery] = useState('Acute Kidney Injury');
+  const [tfidf, setTfidf] = useState(null);
+  const [tfidfErr, setTfidfErr] = useState(null);
+  const [tfidfLoading, setTfidfLoading] = useState(false);
 
   useEffect(() => {
-    // 1. Fetch Zipf analysis
-    fetch('/api/nlp/zipf')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) setZipfData(data);
-      })
-      .catch(() => {});
-
-    // 2. Fetch Negation paradox
-    fetch('/api/nlp/negation-paradox')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data) setParadoxData(data);
-      })
-      .catch(() => {});
-
-    // 3. Initial TF-IDF calculation
-    handleTfidfSearch(tfidfQuery);
+    getZipf().then(setZipf).catch(setZipfErr);
+    getParadox().then(setParadox).catch(setParadoxErr);
   }, []);
 
-  const handleTfidfSearch = (query) => {
-    setTfidfQuery(query);
-    fetch('/api/nlp/tfidf', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, note_text: '' })
-    })
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
-        if (data && data.top_grounding_sentences) {
-          setTfidfResults(data.top_grounding_sentences);
-        } else {
-          // Fallback static TF-IDF simulation
-          setTfidfResults([
-            { sentence: "1. Acute Kidney Injury - resolved, secondary to volume depletion.", cosine_sim: 0.8942 },
-            { sentence: "The patient presented with acute oliguria and elevated creatinine.", cosine_sim: 0.4512 },
-            { sentence: "Nephrology clinic in 2 weeks for repeat BMP.", cosine_sim: 0.3120 }
-          ]);
-        }
-      })
-      .catch(() => {
-        setTfidfResults([
-          { sentence: "1. Acute Kidney Injury - resolved, secondary to volume depletion.", cosine_sim: 0.8942 },
-          { sentence: "The patient presented with acute oliguria and elevated creatinine.", cosine_sim: 0.4512 },
-          { sentence: "Nephrology clinic in 2 weeks for repeat BMP.", cosine_sim: 0.3120 }
-        ]);
-      });
+  const runBpe = (word) => {
+    setBpeWord(word);
+    setBpeLoading(true);
+    setBpeErr(null);
+    getBPE(word).then(setBpe).catch(setBpeErr).finally(() => setBpeLoading(false));
   };
+  useEffect(() => runBpe('pneumonitis'), []);
+
+  const runTfidf = (q) => {
+    setQuery(q);
+    setTfidfLoading(true);
+    setTfidfErr(null);
+    getTfIdf(q, '').then(setTfidf).catch(setTfidfErr).finally(() => setTfidfLoading(false));
+  };
+  useEffect(() => runTfidf('Acute Kidney Injury'), []);
+
+  const th = 'text-[11px] uppercase tracking-wide text-zinc-500 font-medium px-3 py-1.5 text-left';
+  const td = 'px-3 py-1.5 text-[12px] border-t border-zinc-100 font-mono';
 
   return (
-    <div className="flex-1 p-6 lg:p-8 flex flex-col gap-8 max-w-6xl w-full mx-auto">
-      
-      {/* Header */}
-      <div className="pb-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-mono font-semibold uppercase tracking-wider text-sky-700 mb-1">
-            Curriculum NLP Foundations Lab
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Foundational NLP & Vector Representations
-          </h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">
-            Empirical demonstration of Subwords (BPE), TF-IDF sentence retrieval, Zipf's Law, and Word2Vec Negation Blindness.
-          </p>
-        </div>
+    <div>
+      <PageHeader
+        eyebrow="Course foundations"
+        title="NLP foundations"
+        sub="The classical NLP machinery the project rests on, computed live against the 40-note corpus: Zipf's power law, BPE subwords, sparse TF-IDF retrieval, and the distributional-representation failure that motivates the NLI cross-encoder."
+      />
 
-        <div className="flex items-center gap-2 text-xs font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-lg">
-          <Binary className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Core NLP Theory &bull; Viva Syllabus</span>
-        </div>
-      </div>
-
-      {/* SECTION 1: THE WORD2VEC NEGATION PARADOX (KILLER VIVA TOPIC) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs border-t-4 border-t-red-600">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            <h2 className="text-base font-bold text-slate-900">
-              1. The Word2Vec / GloVe Negation Paradox in Healthcare
-            </h2>
-          </div>
-          <span className="text-[11px] font-mono font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
-            Why Static Embeddings Fail
-          </span>
-        </div>
-
-        <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-          <p>
-            A common viva question is: <em>&ldquo;Why can't we just use Word2Vec, GloVe, or bi-encoder cosine similarity to detect diagnoses?&rdquo;</em>
-          </p>
-
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Box A */}
-            <div className="p-4 rounded-lg bg-emerald-50/60 border border-emerald-200">
-              <span className="text-[10px] font-mono font-bold text-emerald-800 uppercase block mb-1">
-                A. Standard Word2Vec Similarity (Synonyms)
-              </span>
-              <div className="font-mono text-xs font-bold text-slate-900 mb-1">
-                CosineSim(&ldquo;pneumonia&rdquo;, &ldquo;pneumonitis&rdquo;) = <span className="text-emerald-700 font-extrabold">0.9912</span>
+      <div className="space-y-5">
+        {/* 1 — Distributional representations & negation */}
+        <Panel
+          title="1 · Distributional representations and the negation problem"
+          sub="Hand-built illustrative 8-dim clinical vectors (nlp_foundations.py) — contrasts synonym similarity against negation blindness"
+        >
+          {paradoxErr && <div className="p-3"><ErrorNote error={paradoxErr} /></div>}
+          {!paradox && !paradoxErr && <div className="p-4"><Spinner /></div>}
+          {paradox && (
+            <div className="px-4 py-3">
+              <div className="overflow-x-auto">
+                <table className="w-full table-fixed">
+                  <thead>
+                    <tr className="bg-zinc-50">
+                      <th className={th}>Word pair</th>
+                      <th className={th}>Cosine similarity</th>
+                      <th className={th}>Reading</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[paradox.word2vec_similarity_similar_diseases, paradox.word2vec_similarity_negation_failure, paradox.word2vec_drug_condition_association].map((d, i) => (
+                      <tr key={i}>
+                        <td className={`${td} text-zinc-900`}>{d.pair[0]} ↔ {d.pair[1]}</td>
+                        <td className={td}>{d.cosine_similarity}</td>
+                        <td className="px-3 py-1.5 text-[12px] border-t border-zinc-100 text-zinc-600">{d.interpretation}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <p className="text-[11px] text-slate-600">
-                Word2Vec succeeds here: both words share similar respiratory co-occurrence contexts (fever, cough, chest x-ray).
+              <p className="mt-3 text-[12.5px] leading-relaxed text-zinc-600">
+                Static vectors (Word2Vec / GloVe) place a condition and its negation almost on top of each other:
+                <em> ruled out pneumonia</em> keeps the same company as <em> pneumonia</em> (Firth's distributional
+                hypothesis), so similarity cannot express direction. Verification therefore uses a cross-encoder
+                that classifies entailment vs. contradiction — an asymmetric, sentence-pair judgment — instead of
+                symmetric cosine distance.
               </p>
             </div>
+          )}
+        </Panel>
 
-            {/* Box B: The Failure */}
-            <div className="p-4 rounded-lg bg-red-50/70 border border-red-200">
-              <span className="text-[10px] font-mono font-bold text-red-800 uppercase block mb-1">
-                B. The Fatal Word2Vec Negation Blindness
-              </span>
-              <div className="font-mono text-xs font-bold text-slate-900 mb-1">
-                CosineSim(&ldquo;pneumonia&rdquo;, &ldquo;ruled out pneumonia&rdquo;) = <span className="text-red-700 font-extrabold">0.9485</span>
-              </div>
-              <p className="text-[11px] text-red-950 font-medium">
-                <strong>CRITICAL NLP BREAKDOWN:</strong> Because <em>"ruled out pneumonia"</em> appears surrounded by the exact same hospital vocabulary, Word2Vec assigns near-identical vector similarity to complete opposites!
-              </p>
-            </div>
-          </div>
-
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 font-mono text-[11px] leading-relaxed">
-            <strong>Theoretical Explanation (J.R. Firth):</strong> <em>&ldquo;You shall know a word by the company it keeps.&rdquo;</em> Static distributional embeddings are symmetric and context-invariant. They cannot distinguish directional entailment from contradiction. This mathematically justifies why our project uses an <strong>orthogonal bidirectional cross-encoder (DeBERTa-v3)</strong> rather than static vectors or simple cosine similarity.
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 2: BYTE-PAIR ENCODING (BPE) & SUBWORD TOKENIZATION */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs border-t-4 border-t-sky-600">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-          <div className="flex items-center gap-2">
-            <Binary className="w-5 h-5 text-sky-600" />
-            <h2 className="text-base font-bold text-slate-900">
-              2. Byte-Pair Encoding (BPE) & Medical Morphology
-            </h2>
-          </div>
-          <span className="text-[11px] font-mono font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded">
-            Subword Tokenization
-          </span>
-        </div>
-
-        <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-          <p>
-            Medical clinical notes are saturated with rare Greco-Latin compound terms (e.g. <em>encephalopathy</em>, <em>hypercholesterolemia</em>). If an NLP system uses a word-level dictionary, these terms produce <strong>Out-Of-Vocabulary (OOV)</strong> errors. BPE solves this by iteratively merging frequent character n-grams into reusable subwords.
-          </p>
-
-          {/* Interactive BPE Explorer */}
-          <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-semibold text-slate-800">Test Subword Segmentation on Medical Roots:</span>
-              <span className="text-[11px] font-mono text-slate-500">Click a preset or type below</span>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {['pneumonitis', 'hypercholesterolemia', 'encephalopathy', 'bronchodilator', 'metformin'].map(w => (
+        {/* 2 — BPE */}
+        <Panel title="2 · Byte-pair encoding & subword tokenization" sub="BPE trainer run over the 40-note corpus — merges learned by adjacency frequency (Sennrich et al., 2016)">
+          <div className="px-4 py-3 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {BPE_PRESETS.map((w) => (
                 <button
                   key={w}
-                  onClick={() => handleBpeTokenize(w)}
-                  className={`px-2.5 py-1 rounded text-[11px] font-mono font-semibold border transition-all ${
-                    bpeWord.toLowerCase() === w
-                      ? 'bg-sky-600 text-white border-sky-600 shadow-2xs'
-                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                  onClick={() => runBpe(w)}
+                  className={`px-2.5 py-1 rounded text-[12px] border font-mono transition-colors ${
+                    bpeWord === w
+                      ? 'bg-blue-50 text-blue-700 border-blue-300'
+                      : 'bg-white text-zinc-600 border-zinc-300 hover:bg-zinc-50'
                   }`}
                 >
                   {w}
                 </button>
               ))}
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
               <input
-                type="text"
                 value={bpeWord}
-                onChange={(e) => handleBpeTokenize(e.target.value)}
-                placeholder="Type medical term..."
-                className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-mono outline-none focus:border-sky-600 w-64"
+                onChange={(e) => runBpe(e.target.value)}
+                placeholder="Type a medical term…"
+                aria-label="Word to tokenize"
+                className="flex-1 min-w-[180px] bg-white border border-zinc-300 rounded-md px-3 py-1.5 text-[13px] font-mono focus:outline-none focus:border-blue-500"
               />
-              <span className="text-xs text-slate-500 font-mono">
-                Input Length: {bpeWord.length} chars
-              </span>
             </div>
-
-            {/* Subword Visualization Badges */}
-            <div className="pt-2">
-              <span className="text-[11px] font-mono text-slate-500 block mb-1.5">BPE Subword Token Stream:</span>
-              <div className="flex items-center gap-2 flex-wrap">
-                {bpeTokens.map((tok, idx) => (
-                  <div key={idx} className="flex items-center">
-                    <span className="font-mono text-xs font-bold text-sky-900 bg-sky-100 border border-sky-300 px-3 py-1.5 rounded-md shadow-2xs">
-                      {idx > 0 && <span className="text-sky-400 mr-0.5">##</span>}
-                      {tok}
-                    </span>
-                    {idx < bpeTokens.length - 1 && (
-                      <span className="text-slate-300 mx-1 font-mono">+</span>
-                    )}
-                  </div>
-                ))}
-                <span className="ml-3 text-[11px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                  {bpeTokens.length} subword tokens generated (Zero OOV)
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 3: TF-IDF SENTENCE GROUNDING RETRIEVAL */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs border-t-4 border-t-emerald-600">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-          <div className="flex items-center gap-2">
-            <Search className="w-5 h-5 text-emerald-600" />
-            <h2 className="text-base font-bold text-slate-900">
-              3. Sparse TF-IDF & Cosine Sentence Retrieval
-            </h2>
-          </div>
-          <span className="text-[11px] font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-            Information Retrieval Baseline
-          </span>
-        </div>
-
-        <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-          <p>
-            Before verifying a claim with the heavy cross-encoder, Veritas-Clin indexes the physician's note using smoothed <strong>TF-IDF vectorization</strong>. It calculates sparse cosine similarity to retrieve the top candidate grounding sentences.
-          </p>
-
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              value={tfidfQuery}
-              onChange={(e) => handleTfidfSearch(e.target.value)}
-              placeholder="Query clinical entity..."
-              className="flex-1 px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono outline-none focus:border-sky-600 focus:bg-white"
-            />
-            <button
-              onClick={() => handleTfidfSearch(tfidfQuery)}
-              className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-semibold"
-            >
-              Compute TF-IDF Cosine
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[11px] font-mono font-bold uppercase text-slate-500 block">
-              Top-Ranked Grounding Sentences (Sparse Cosine Space):
-            </span>
-            {tfidfResults.map((res, i) => (
-              <div key={i} className="p-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between gap-4">
-                <span className="font-mono text-xs text-slate-800 truncate">&ldquo;{res.sentence}&rdquo;</span>
-                <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded shrink-0">
-                  Cosine: {res.cosine_sim}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className="text-[11px] font-mono text-slate-500 bg-slate-100 p-2.5 rounded">
-            Formula: TF-IDF(t, d) = TF(t, d) &times; log((N + 1) / (DF(t) + 1)) + 1
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 4: ZIPF'S LAW ON CLINICAL CORPORA */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs border-t-4 border-t-indigo-600">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-          <div className="flex items-center gap-2">
-            <BarChart2 className="w-5 h-5 text-indigo-600" />
-            <h2 className="text-base font-bold text-slate-900">
-              4. Zipf's Law Analysis on Clinical Vocabulary
-            </h2>
-          </div>
-          <span className="text-[11px] font-mono font-bold text-indigo-800 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded">
-            Statistical Power-Law Distribution
-          </span>
-        </div>
-
-        <div className="space-y-4 text-xs text-slate-700 leading-relaxed">
-          <p>
-            Zipf's Law states that the frequency of any word is inversely proportional to its rank in the frequency table: <em>f(r) &prop; 1/r &rArr; r &times; f(r) &approx; C</em>. In clinical records, structural functional words dominate rank 1..10, whereas specific diagnostic findings populate the long sparse tail.
-          </p>
-
-          {zipfData && (
-            <div className="grid sm:grid-cols-3 gap-4 font-mono text-xs">
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase">Total Corpus Tokens:</span>
-                <span className="text-base font-bold text-slate-900">{zipfData.total_tokens}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase">Unique Vocab Types:</span>
-                <span className="text-base font-bold text-slate-900">{zipfData.unique_vocab_types}</span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-slate-400 block text-[10px] uppercase">Type-Token Ratio (TTR):</span>
-                <span className="text-base font-bold text-indigo-700">{zipfData.type_token_ratio}</span>
-              </div>
-            </div>
-          )}
-
-          {zipfData && zipfData.ranks && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left font-mono text-[11px] border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase">
-                    <th className="py-2 px-3">Rank (r)</th>
-                    <th className="py-2 px-3">Word Type</th>
-                    <th className="py-2 px-3">Frequency (f)</th>
-                    <th className="py-2 px-3">log10(r)</th>
-                    <th className="py-2 px-3">log10(f)</th>
-                    <th className="py-2 px-3">Zipf Constant (r &times; f)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {zipfData.ranks.slice(0, 8).map(row => (
-                    <tr key={row.rank} className="hover:bg-slate-50">
-                      <td className="py-2 px-3 font-bold text-slate-900">{row.rank}</td>
-                      <td className="py-2 px-3 font-bold text-sky-700">&ldquo;{row.word}&rdquo;</td>
-                      <td className="py-2 px-3">{row.frequency}</td>
-                      <td className="py-2 px-3 text-slate-400">{row.log_rank}</td>
-                      <td className="py-2 px-3 text-slate-400">{row.log_freq}</td>
-                      <td className="py-2 px-3 font-bold text-slate-800">{row.zipf_constant}</td>
-                    </tr>
+            {bpeErr && <ErrorNote error={bpeErr} />}
+            {bpeLoading && <Spinner label="Tokenizing" />}
+            {bpe && !bpeLoading && (
+              <div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {bpe.subword_tokens.map((t, i) => (
+                    <React.Fragment key={i}>
+                      {i > 0 && <span className="text-zinc-300 text-[11px]">·</span>}
+                      <span className={`font-mono text-[12px] border rounded px-1.5 py-0.5 ${i === 0 ? 'bg-blue-50 border-blue-200 text-blue-800' : 'bg-white border-zinc-200 text-zinc-700'}`}>
+                        {i > 0 && <span className="text-zinc-400">##</span>}{t.replace(/^##/, '')}
+                      </span>
+                    </React.Fragment>
                   ))}
-                </tbody>
-              </table>
+                </div>
+                <p className="mt-2 text-[12px] text-zinc-500">
+                  {bpe.token_count} subword tokens · {bpe.merges_learned} merges learned · no OOV entries —
+                  a word the corpus knows resolves to a single token; an unseen compound (try
+                  &ldquo;hypercholesterolemia&rdquo;) decomposes into the units the corpus taught.
+                </p>
+              </div>
+            )}
+          </div>
+        </Panel>
+
+        {/* 3 — TF-IDF */}
+        <Panel title="3 · Sparse TF-IDF sentence retrieval" sub="POST /api/nlp/tfidf — smoothed TF-IDF, L2-normalized cosine">
+          <div className="px-4 py-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && runTfidf(query)}
+                placeholder="Query entity…"
+                aria-label="TF-IDF query"
+                className="flex-1 bg-white border border-zinc-300 rounded-md px-3 py-1.5 text-[13px] focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onClick={() => runTfidf(query)}
+                className="bg-zinc-800 hover:bg-zinc-900 text-white rounded-md px-3 py-1.5 text-[13px] font-medium shrink-0"
+              >
+                Retrieve
+              </button>
+            </div>
+            {tfidfErr && <ErrorNote error={tfidfErr} />}
+            {tfidfLoading && <Spinner label="Vectorizing" />}
+            {tfidf && !tfidfLoading && (
+              <>
+                <ol className="divide-y divide-zinc-100 border border-zinc-200 rounded-md">
+                  {tfidf.top_grounding_sentences.map((r, i) => (
+                    <li key={i} className="flex items-center justify-between gap-4 px-3 py-2">
+                      <span className="text-[12.5px] text-zinc-800 flex-1 min-w-0 truncate" title={r.sentence}>{r.sentence}</span>
+                      <span className="font-mono text-[11px] text-zinc-400 shrink-0">{r.note_id}</span>
+                      <Chip tone={i === 0 && r.cosine_sim > 0 ? 'emerald' : 'zinc'}>cos {r.cosine_sim}</Chip>
+                    </li>
+                  ))}
+                </ol>
+                <p className="text-[12px] text-zinc-500">
+                  {tfidf.total_sentences_indexed} sentences indexed · score(t,d) = tf · (ln((N+1)/(df+1)) + 1)
+                </p>
+              </>
+            )}
+          </div>
+        </Panel>
+
+        {/* 4 — Zipf */}
+        <Panel title="4 · Zipf's law on the clinical vocabulary" sub="Rank–frequency fit over all 40 notes, GET /api/nlp/zipf">
+          {zipfErr && <div className="p-3"><ErrorNote error={zipfErr} /></div>}
+          {!zipf && !zipfErr && <div className="p-4"><Spinner /></div>}
+          {zipf && (
+            <div className="px-4 py-3">
+              <dl className="grid grid-cols-3 gap-3 mb-3 max-w-md">
+                <div>
+                  <dt className="text-[11px] uppercase tracking-wide text-zinc-500">Tokens</dt>
+                  <dd className="text-[16px] font-semibold text-zinc-900">{Number(zipf.total_tokens).toLocaleString('en-US')}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-wide text-zinc-500">Unique types</dt>
+                  <dd className="text-[16px] font-semibold text-zinc-900">{Number(zipf.unique_vocab_types).toLocaleString('en-US')}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-wide text-zinc-500">Type/token ratio</dt>
+                  <dd className="text-[16px] font-semibold text-zinc-900">{zipf.type_token_ratio}</dd>
+                </div>
+              </dl>
+              <div className="overflow-x-auto">
+                <table className="w-full table-fixed">
+                  <thead>
+                    <tr className="bg-zinc-50">
+                      <th className={th}>Rank</th>
+                      <th className={th}>Type</th>
+                      <th className={th}>Frequency</th>
+                      <th className={th}>log₁₀(r)</th>
+                      <th className={th}>log₁₀(f)</th>
+                      <th className={th}>r·f</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {zipf.ranks.slice(0, 10).map((r) => (
+                      <tr key={r.rank}>
+                        <td className={td}>{r.rank}</td>
+                        <td className={`${td} text-zinc-900`}>{r.word}</td>
+                        <td className={td}>{r.frequency}</td>
+                        <td className={`${td} text-zinc-500`}>{r.log_rank}</td>
+                        <td className={`${td} text-zinc-500`}>{r.log_freq}</td>
+                        <td className={`${td} font-semibold`}>{r.zipf_constant}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-[12px] text-zinc-500">
+                r·f stays roughly flat for the top ranks — frequency ∝ 1/rank — with grammatical items
+                dominating the head and specific clinical findings scattered in the long tail.
+              </p>
             </div>
           )}
-        </div>
+        </Panel>
       </div>
-
     </div>
   );
 }

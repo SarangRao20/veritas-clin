@@ -59,47 +59,80 @@ def analyze_zipfs_law(corpus_texts: list[str], top_k: int = 25) -> dict[str, Any
 
 # --- 2. Byte-Pair Encoding (BPE) Subword Tokenizer -----------------------------
 
-class SimpleBPETokenizer:
-    """Minimal didactic BPE implementation showing how medical subwords are formed."""
+class BPETokenizer:
+    """Minimal but real BPE: merges are *learned* from the corpus by frequency.
 
-    def __init__(self, vocab_merges: list[tuple[str, str]] | None = None) -> None:
-        # Preloaded clinical subword merges showing medical morphology
-        self.merges: list[tuple[str, str]] = vocab_merges or [
-            ("p", "n"), ("pn", "eu"), ("pneu", "mon"), ("pneumon", "ia"),  # pneumonia
-            ("h", "y"), ("hy", "per"), ("hyper", "ten"), ("hyperten", "sion"),  # hypertension
-            ("m", "e"), ("me", "t"), ("met", "form"), ("metform", "in"),  # metformin
-            ("d", "i"), ("di", "a"), ("dia", "bet"), ("diabet", "es"),  # diabetes
-            ("c", "h"), ("ch", "ol"), ("chol", "ester"), ("cholester", "ol"),  # cholesterol
-            ("k", "i"), ("ki", "d"), ("kid", "ney"),  # kidney
-            ("i", "n"), ("in", "j"), ("inj", "ur"), ("injur", "y"),  # injury
-            ("r", "u"), ("ru", "l"), ("rul", "ed"),  # ruled
-            ("o", "u"), ("ou", "t"),  # out
-        ]
+    Training follows the original algorithm (Sennrich et al., 2016): freeze the
+    vocabulary at character level, then repeatedly merge the most frequent
+    adjacent symbol pair until `num_merges`. Tokenization replays the learned
+    merges in order, so unseen medical compounds decompose into subwords the
+    corpus taught us — zero OOV by construction.
+    """
+
+    def __init__(self, texts: list[str], num_merges: int = 400) -> None:
+        word_freqs: Counter[str] = Counter()
+        for text in texts:
+            for word in _WORD_REGEX.findall(text.lower()):
+                word_freqs[word] += 1
+
+        splits: dict[str, list[str]] = {w: list(w) for w in word_freqs}
+        self.merges: list[tuple[str, str]] = []
+
+        for _ in range(num_merges):
+            pair_freqs: Counter[tuple[str, str]] = Counter()
+            for word, freq in word_freqs.items():
+                symbols = splits[word]
+                for i in range(len(symbols) - 1):
+                    pair_freqs[(symbols[i], symbols[i + 1])] += freq
+            if not pair_freqs:
+                break
+            # deterministic pick: highest frequency, lexicographically smallest on ties
+            best = min(pair_freqs.items(), key=lambda kv: (-kv[1], kv[0]))[0]
+            self.merges.append(best)
+            for word in splits:
+                symbols = splits[word]
+                merged: list[str] = []
+                i = 0
+                while i < len(symbols):
+                    if i < len(symbols) - 1 and (symbols[i], symbols[i + 1]) == best:
+                        merged.append(symbols[i] + symbols[i + 1])
+                        i += 2
+                    else:
+                        merged.append(symbols[i])
+                        i += 1
+                splits[word] = merged
 
     def tokenize_subwords(self, word: str) -> list[str]:
-        """Segments a word into subwords using learned character merges."""
         clean = word.lower().strip()
         if not clean:
             return []
-        
-        # Start at character level
         symbols = list(clean)
-        
-        # Iteratively apply merges in priority order
-        for pair in self.merges:
-            first, second = pair
+        for first, second in self.merges:
+            merged: list[str] = []
             i = 0
-            new_symbols = []
             while i < len(symbols):
                 if i < len(symbols) - 1 and symbols[i] == first and symbols[i + 1] == second:
-                    new_symbols.append(first + second)
+                    merged.append(first + second)
                     i += 2
                 else:
-                    new_symbols.append(symbols[i])
+                    merged.append(symbols[i])
                     i += 1
-            symbols = new_symbols
-
+            symbols = merged
         return symbols
+
+
+_TOKENIZER = None
+
+
+def get_bpe_tokenizer() -> "tuple[BPETokenizer, int]":
+    """Trained-once (_cached) BPE over the full benchmark corpus."""
+    global _TOKENIZER
+    if _TOKENIZER is None:
+        from .data_gen import ensure_corpus
+        corpus = ensure_corpus()
+        tok = BPETokenizer([r["text"] for r in corpus], num_merges=400)
+        _TOKENIZER = tok
+    return _TOKENIZER, len(_TOKENIZER.merges)
 
 
 # --- 3. TF-IDF (Term Frequency - Inverse Document Frequency) ------------------

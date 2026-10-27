@@ -1,34 +1,26 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Sidebar from './components/Sidebar';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import AppShell from './components/AppShell';
 import EncountersPage from './pages/EncountersPage';
 import AuditPage from './pages/AuditPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import NlpLabPage from './pages/NlpLabPage';
 import SettingsPage from './pages/SettingsPage';
 import VivaGuidePage from './pages/VivaGuidePage';
-import NlpLabPage from './pages/NlpLabPage';
 
 export default function App() {
   return (
     <BrowserRouter>
-      <div className="flex h-screen w-screen overflow-hidden bg-slate-50 text-slate-900 font-sans antialiased">
-        
-        {/* Persistent Enterprise Hospital Sidebar */}
-        <Sidebar />
-
-        {/* Dynamic Route Content Area */}
-        <main className="flex-1 flex flex-col h-full overflow-y-auto">
-          <Routes>
-            <Route path="/" element={<EncountersPage />} />
-            <Route path="/audit" element={<AuditPage />} />
-            <Route path="/nlp-lab" element={<NlpLabPage />} />
-            <Route path="/analytics" element={<AnalyticsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/viva-guide" element={<VivaGuidePage />} />
-          </Routes>
-        </main>
-
-      </div>
+      <AppShell>
+        <Routes>
+          <Route path="/" element={<EncountersPage />} />
+          <Route path="/audit" element={<AuditPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/nlp-lab" element={<NlpLabPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/viva-guide" element={<VivaGuidePage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AppShell>
     </BrowserRouter>
   );
 }

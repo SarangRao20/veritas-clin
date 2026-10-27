@@ -1,212 +1,149 @@
-import React from 'react';
-import { 
-  Activity, 
-  Cpu, 
-  CheckCircle2, 
-  Sliders, 
-  TrendingUp, 
-  FileText,
-  Layers,
-  ArrowRight
-} from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getMetrics } from '../api';
+import { ErrorNote, PageHeader, Panel, Stat, fmt } from '../components/ui';
+
+const TYPE_ROWS = ['diagnosis', 'medication', 'followup'];
+const TYPE_LABEL = { diagnosis: 'Diagnosis', medication: 'Medication', followup: 'Follow-up' };
+const DECISION_ORDER = ['accept', 'flag_for_review', 'abstain'];
+const DECISION_LABEL = { accept: 'Auto-accepted', flag_for_review: 'Physician review', abstain: 'Held back' };
 
 export default function AnalyticsPage() {
+  const [metrics, setMetrics] = useState(null);
+  const [error, setError] = useState(null);
+
+  const load = () => {
+    setError(null);
+    getMetrics().then(setMetrics).catch(setError);
+  };
+  useEffect(load, []);
+
+  if (error && !metrics) {
+    return (
+      <div>
+        <PageHeader eyebrow="Benchmark" title="Model evaluation" />
+        <ErrorNote error={error} onRetry={load} />
+      </div>
+    );
+  }
+  if (!metrics) {
+    return (
+      <div>
+        <PageHeader eyebrow="Benchmark" title="Model evaluation" />
+        <p className="text-[13px] text-zinc-500">Loading metrics…</p>
+      </div>
+    );
+  }
+
+  const th = 'text-[11px] uppercase tracking-wide text-zinc-500 font-medium px-3 py-2 text-left';
+  const td = 'px-3 py-2 text-[13px] border-t border-zinc-100';
+
   return (
-    <div className="flex-1 p-6 lg:p-8 flex flex-col gap-6 max-w-7xl w-full mx-auto">
-      
-      {/* Page Title */}
-      <div className="pb-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-mono font-semibold uppercase tracking-wider text-sky-700 mb-1">
-            Empirical GPU Evaluation &bull; Tesla T4
-          </div>
-          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Telemetry & Model Calibration Studio
-          </h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">
-            Real benchmark measurements on held-out test split (40 notes, seed 7, zero-shot Qwen2.5-3B + DeBERTa-v3).
-          </p>
-        </div>
+    <div>
+      <PageHeader
+        eyebrow="Benchmark"
+        title="Model evaluation"
+        sub="Held-out test split from the Tesla T4 benchmark run. Every number below is read directly from artifacts/metrics.json."
+      />
 
-        <div className="flex items-center gap-2 text-xs font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 rounded-lg">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>GPU Runtime: 582.2s Execution</span>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Accepted precision" value={fmt.pct(metrics.policy.accepted_precision)} sub="of chart write-backs correct" />
+        <Stat label="Coverage" value={fmt.pct(metrics.policy.coverage)} sub="claims cleared without interruption" />
+        <Stat label="Hallucination capture" value={fmt.pct(metrics.policy.hallucination_capture)} sub="planted false positives suppressed" />
+        <Stat label="ECE (test)" value={fmt.round(metrics.calibration.ece_test, 4)} sub={`dev ${fmt.round(metrics.calibration.ece_dev, 4)}`} />
       </div>
 
-      {/* 4 Scoreboard Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block">
-            Accepted Chart Precision
-          </span>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">92.9%</span>
-            <span className="text-xs font-mono font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">+7.7%</span>
+      <div className="mt-5 grid gap-5 lg:grid-cols-2 items-start">
+        <Panel title="Extraction performance" sub={`${metrics.config.n_claims_test} held-out claims · ${metrics.config.n_notes} notes · seed ${metrics.config.seed}`}>
+          <div className="overflow-x-auto px-1 pb-1">
+            <table className="w-full table-fixed">
+              <thead>
+                <tr className="bg-zinc-50">
+                  <th className={th}>Entity type</th>
+                  <th className={th}>Precision</th>
+                  <th className={th}>Recall</th>
+                  <th className={th}>F1</th>
+                  <th className={th}>TP</th>
+                  <th className={th}>FP</th>
+                  <th className={th}>FN</th>
+                </tr>
+              </thead>
+              <tbody>
+                {TYPE_ROWS.map((t) => {
+                  const r = metrics.extraction[t];
+                  return (
+                    <tr key={t}>
+                      <td className={`${td} text-zinc-900`}>{TYPE_LABEL[t]}</td>
+                      <td className={`${td} font-mono text-[12px]`}>{fmt.pct(r.precision, 1)}</td>
+                      <td className={`${td} font-mono text-[12px]`}>{fmt.pct(r.recall, 1)}</td>
+                      <td className={`${td} font-mono text-[12px] font-semibold`}>{fmt.pct(r.f1, 1)}</td>
+                      <td className={`${td} font-mono text-[12px] text-zinc-500`}>{r.tp}</td>
+                      <td className={`${td} font-mono text-[12px] text-zinc-500`}>{r.fp}</td>
+                      <td className={`${td} font-mono text-[12px] text-zinc-500`}>{r.fn}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <p className="text-xs text-slate-500 mt-1">vs 85.2% un-calibrated baseline</p>
-        </div>
+        </Panel>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block">
-            Hallucination Guard Rate
-          </span>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-emerald-700">56.2%</span>
+        <Panel
+          title="Abstention policy"
+          sub={`Learned on the dev split (never test). Unsupported-claim rate without calibration: ${fmt.pct(metrics.unsupported_claim_rate)}`}
+        >
+          <dl className="px-4 py-3 divide-y divide-zinc-100 text-[13px]">
+            <div className="flex justify-between py-2">
+              <dt className="text-zinc-600">Decision threshold τ*</dt>
+              <dd className="font-mono text-[12px]">{fmt.round(metrics.calibration.threshold, 4)}</dd>
+            </div>
+            <div className="flex justify-between py-2">
+              <dt className="text-zinc-600">Hysteresis band (low_frac)</dt>
+              <dd className="font-mono text-[12px]">{fmt.round(metrics.calibration.low_frac, 2)} × τ* = {fmt.round(metrics.calibration.threshold * metrics.calibration.low_frac, 4)}</dd>
+            </div>
+            <div className="flex justify-between py-2">
+              <dt className="text-zinc-600">Test-set decisions</dt>
+              <dd className="text-[12px] text-zinc-700 space-x-2">
+                {DECISION_ORDER.map((d) => (
+                  <span key={d}>
+                    {DECISION_LABEL[d]} <span className="font-mono">{metrics.policy.decision_counts[d] ?? 0}</span>
+                  </span>
+                ))}
+              </dd>
+            </div>
+          </dl>
+          <div className="px-4 pb-4 -mt-1 text-[12px] text-zinc-500 leading-relaxed">
+            A claim is auto-accepted when score ≥ τ*; between τ* and the hysteresis band it is held
+            for physician review; below the band it is abstained entirely.
           </div>
-          <p className="text-xs text-slate-500 mt-1">Planted false-positive traps suppressed</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block">
-            Automated Chart Coverage
-          </span>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-sky-700">90.7%</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">Claims signed off without doctor interruption</p>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
-          <span className="text-[11px] font-mono uppercase text-slate-400 font-bold block">
-            Expected Calibration Error (ECE)
-          </span>
-          <div className="flex items-baseline gap-2 mt-2">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-indigo-700">0.1353</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">Dev ECE: 0.1500 &bull; Test ECE: 0.1353</p>
-        </div>
+        </Panel>
       </div>
 
-      {/* GPU Plots Section */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        
-        {/* Plot 1 */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-sky-600" />
-                <span>Reliability Diagram (Expected Calibration Error)</span>
-              </h3>
-              <span className="text-[11px] font-mono text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
-                Dev ECE: 0.1500
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Compares predicted model confidence against observed empirical accuracy across probability bins. Proves that model confidence is grounded rather than overconfident.
-            </p>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center">
-              <img 
-                src="/artifacts/plots/calibration.png" 
-                alt="Calibration Reliability Plot" 
-                className="max-h-72 object-contain rounded"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'https://placehold.co/400x300/f8fafc/0284c7?text=Calibration+Plot';
-                }}
-              />
-            </div>
+      <div className="mt-5 grid gap-5 lg:grid-cols-2 items-start">
+        <Panel
+          title="Reliability diagram"
+          sub="Predicted confidence vs. observed accuracy on the dev split"
+        >
+          <div className="p-4">
+            <img
+              src="/artifacts/plots/calibration.png"
+              alt="Calibration reliability diagram (dev split)"
+              className="w-full border border-zinc-100 rounded"
+            />
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] font-mono text-slate-500">
-            Formula: ECE = &Sigma; (|B_b| / N) &bull; |acc(b) - conf(b)|
+        </Panel>
+        <Panel
+          title="Risk–coverage curve"
+          sub={`Selective risk as coverage grows, test split (optimal point: coverage ${fmt.pct(metrics.policy.coverage)}`}
+        >
+          <div className="p-4">
+            <img
+              src="/artifacts/plots/risk_coverage.png"
+              alt="Risk-coverage curve (test split)"
+              className="w-full border border-zinc-100 rounded"
+            />
           </div>
-        </div>
-
-        {/* Plot 2 */}
-        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-4">
-              <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-600" />
-                <span>Selective Risk vs. Chart Coverage Curve</span>
-              </h3>
-              <span className="text-[11px] font-mono text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
-                Test Split (N=108 Claims)
-              </span>
-            </div>
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Demonstrates the selective prediction trade-off: as the system expands automated coverage, the selective error rate remains tightly controlled below 8% at the dev-chosen cutoff &tau;* = 0.35.
-            </p>
-            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-center">
-              <img 
-                src="/artifacts/plots/risk_coverage.png" 
-                alt="Risk-Coverage Trade-off Curve" 
-                className="max-h-72 object-contain rounded"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'https://placehold.co/400x300/f8fafc/0284c7?text=Risk+Coverage+Plot';
-                }}
-              />
-            </div>
-          </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 text-[11px] font-mono text-slate-500">
-            Optimal Point: Coverage 90.7% &bull; Selective Risk 7.1%
-          </div>
-        </div>
-
+        </Panel>
       </div>
-
-      {/* Detailed Extraction Performance Table */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
-        <h3 className="font-bold text-sm text-slate-900 mb-4">
-          Detailed Finding Extraction Performance (Held-Out Test Split)
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 font-mono text-[11px] text-slate-500 font-bold uppercase">
-                <th className="py-2.5 px-4">Entity Type</th>
-                <th className="py-2.5 px-4">Precision</th>
-                <th className="py-2.5 px-4">Recall</th>
-                <th className="py-2.5 px-4">F1 Score</th>
-                <th className="py-2.5 px-4">True Pos (TP)</th>
-                <th className="py-2.5 px-4">False Pos (FP)</th>
-                <th className="py-2.5 px-4">Clinical Error Note</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-mono text-slate-700">
-              <tr>
-                <td className="py-3 px-4 font-bold text-slate-900">Diagnosis</td>
-                <td className="py-3 px-4 text-emerald-700 font-bold">77.2%</td>
-                <td className="py-3 px-4">100.0%</td>
-                <td className="py-3 px-4 font-bold">87.1%</td>
-                <td className="py-3 px-4">44</td>
-                <td className="py-3 px-4 text-red-600 font-bold">13</td>
-                <td className="py-3 px-4 text-slate-500 font-sans text-xs">The 13 FPs are the planted rule-out & family history traps.</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4 font-bold text-slate-900">Medication</td>
-                <td className="py-3 px-4 text-emerald-700 font-bold">90.6%</td>
-                <td className="py-3 px-4">100.0%</td>
-                <td className="py-3 px-4 font-bold">95.1%</td>
-                <td className="py-3 px-4">29</td>
-                <td className="py-3 px-4 text-red-600 font-bold">3</td>
-                <td className="py-3 px-4 text-slate-500 font-sans text-xs">Captures drug name, strength, route, and daily dosing.</td>
-              </tr>
-              <tr>
-                <td className="py-3 px-4 font-bold text-slate-900">Follow-up</td>
-                <td className="py-3 px-4 text-emerald-700 font-bold">100.0%</td>
-                <td className="py-3 px-4">95.0%</td>
-                <td className="py-3 px-4 font-bold">97.4%</td>
-                <td className="py-3 px-4">19</td>
-                <td className="py-3 px-4 text-slate-400">0</td>
-                <td className="py-3 px-4 text-slate-500 font-sans text-xs">Continuity of care outpatient specialist appointments.</td>
-              </tr>
-              <tr className="bg-slate-50/70 font-bold text-slate-900">
-                <td className="py-3 px-4">Aggregate Benchmark</td>
-                <td className="py-3 px-4 text-emerald-700">85.2%</td>
-                <td className="py-3 px-4">98.9%</td>
-                <td className="py-3 px-4 text-sky-700">91.5%</td>
-                <td className="py-3 px-4">92</td>
-                <td className="py-3 px-4 text-red-600">16</td>
-                <td className="py-3 px-4 text-emerald-700 font-sans text-xs">Post-audit accepted precision: 92.9% (+7.7% boost).</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
     </div>
   );
 }
