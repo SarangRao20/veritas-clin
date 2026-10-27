@@ -3,55 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Veritas-Clin | Evidence-Grounded Clinical Extraction Studio</title>
+  <title>Veritas-Clin | Clinical AI Safety & Verification Workstation</title>
   
-  <!-- Google Fonts: Figtree (Geometric Sans) & JetBrains Mono (Clinical Monospace) -->
+  <!-- Google Fonts: Figtree (Clinical Sans) & JetBrains Mono (Medical Monospace) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <!-- Three.js (r128) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-  <!-- Studio Favicon & Styles -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2322d3ee'><circle cx='12' cy='12' r='10'/></svg>">
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230284c7'><path d='M12 2v20M2 12h20'/></svg>">
+  
+  <!-- Stylesheets -->
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- Top Telemetry & Brand Header -->
+  <!-- Top Hospital Telemetry Header -->
   <header class="app-header">
-    <div class="brand-section">
-      <a href="#" class="brand-logo">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07l14.14-14.14"/>
+    <div class="brand-group">
+      <div class="hospital-cross-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M2 12h20"/>
         </svg>
-        <span class="brand-title">
-          Veritas-Clin
-          <span class="brand-badge">Clinical Telemetry v0.1</span>
-        </span>
-      </a>
-
-      <div class="telemetry-pills">
-        <div class="telemetry-item">
-          <span class="status-dot pulsing"></span>
-          <span>GPU Benchmark: T4 (582s)</span>
-        </div>
-        <div class="telemetry-item">
-          <span>Dual Architecture: Qwen2.5-3B + DeBERTa-v3</span>
-        </div>
+      </div>
+      <div class="brand-text">
+        <h1>VERITAS-CLIN <span style="font-size: 0.72rem; color: #0284c7; font-weight: 600; background: #e0f2fe; padding: 2px 7px; border-radius: 4px;">EHR Safety Guardrail</span></h1>
+        <p>Evidence-Grounded Extraction &bull; Cross-Encoder NLI &bull; Calibrated Selective Prediction</p>
       </div>
     </div>
 
-    <div class="nav-actions">
-      <button class="btn-secondary" id="btn-open-telemetry">
+    <div class="header-pills">
+      <div class="pill-badge">
+        <span class="status-dot-pulse"></span>
+        <span>Dual Engine: Qwen2.5-3B + DeBERTa-v3</span>
+      </div>
+      <div class="pill-badge">
+        <span>GPU Benchmark: T4 (582s)</span>
+      </div>
+      <div class="pill-badge" style="color: #059669; background: #d1fae5; border-color: #a7f3d0;">
+        <span>Accepted Precision: 92.9%</span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-secondary" id="btn-open-guide">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="18" y1="20" x2="18" y2="10"></line>
-          <line x1="12" y1="20" x2="12" y2="4"></line>
-          <line x1="6" y1="20" x2="6" y2="14"></line>
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="16" x2="12" y2="12"></line>
+          <line x1="12" y1="8" x2="12.01" y2="8"></line>
         </svg>
-        Benchmark Telemetry
+        Viva Defense Guide
       </button>
 
       <a href="https://github.com/SarangRao20/veritas-clin" target="_blank" rel="noopener noreferrer" class="btn-secondary">
@@ -61,202 +62,234 @@
         GitHub
       </a>
 
-      <button class="btn-primary" id="btn-run-extract">
+      <button class="btn-audit" id="btn-trigger-audit">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          <polyline points="9 11 12 14 22 4"></polyline>
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
         </svg>
-        Run Verification
+        Run Clinical Audit
       </button>
     </div>
   </header>
 
-  <!-- 3-Column Studio Cockpit Grid -->
-  <main class="studio-container">
+  <!-- One-Click Viva Failure Mode Presets Bar -->
+  <nav class="presets-banner">
+    <div class="presets-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+      </svg>
+      <span>VIVA CLINICAL ADVERSARIAL TRAPS (1-CLICK TEST CASES):</span>
+    </div>
 
-    <!-- Column 1: Clinical EHR Note & Span Annotator -->
-    <section class="panel panel-left">
-      <div class="panel-header">
-        <div class="panel-title-group">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="16" y1="13" x2="8" y2="13"></line>
-            <line x1="16" y1="17" x2="8" y2="17"></line>
-          </svg>
-          <span class="panel-title">Clinical Note</span>
-          <span class="brand-badge" id="patient-id-display">VS-002</span>
+    <div class="presets-buttons">
+      <button class="trap-btn active" data-preset="trap_aki_negation">
+        <span>Trap 1: Ruled-Out Condition (Negation Blindness)</span>
+      </button>
+      <button class="trap-btn" data-preset="trap_allergy_prescription">
+        <span>Trap 2: Patient Allergy Misinterpreted as Medication</span>
+      </button>
+      <button class="trap-btn" data-preset="trap_family_history">
+        <span>Trap 3: Family History Misattributed as Diagnosis</span>
+      </button>
+      <button class="trap-btn" data-preset="case_heart_failure">
+        <span>Case 4: Multi-Drug Cardiology Regimen</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main 3-Column Hospital Audit Cockpit -->
+  <main class="audit-workspace">
+
+    <!-- Column 1: Raw EHR Clinical Note -->
+    <section class="audit-col">
+      <div class="col-header col-note">
+        <div class="col-title-group">
+          <div class="col-icon note">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+            </svg>
+          </div>
+          <div>
+            <h2>1. Source Clinical EHR Note</h2>
+            <span style="font-size: 0.74rem; color: var(--text-muted);">Unstructured Physician Discharge Record</span>
+          </div>
         </div>
-
-        <select class="preset-selector" id="preset-select">
-          <option value="preset_aki_trap">Case 1: AKI + Rule-Out Trap</option>
-          <option value="preset_chf">Case 2: Heart Failure Polypharmacy</option>
-          <option value="preset_allergy_trap">Case 3: Pneumonia + Allergy Trap</option>
-        </select>
+        <span class="col-tag note" id="patient-mrn-badge">MRN: VS-002</span>
       </div>
 
-      <div class="panel-body">
-        <div class="note-wrapper">
-          <div class="trap-alert">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-            <div>
-              <strong>Adversarial Modality Test:</strong> Contains negated findings (e.g. <em>"ruled out"</em>) & distractor history. Observe how NLI verification abstains from ungrounded claims.
-            </div>
+      <div class="col-content">
+        <div class="ehr-document">
+          <div class="scan-line" id="audit-scan-laser"></div>
+          <div class="ehr-meta-bar">
+            <span>PATIENT: ANONYMIZED ADULT</span>
+            <span>WARD: NEPHROLOGY 4B</span>
+            <span>STATUS: FINAL DISCHARGE</span>
           </div>
-
-          <div class="note-editor-container">
-            <!-- Rendered View with Interactive Span Highlight Pills -->
-            <div class="note-highlighted-view" id="note-highlight-display"></div>
-            <!-- Raw Textarea for ad-hoc user edits -->
-            <textarea class="note-textarea" id="note-raw-textarea" style="display: none;"></textarea>
+          <div id="ehr-note-body">
+            <!-- Rendered clinical text with sentence highlight anchors -->
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Column 2: Center Stage - Three.js 3D Evidence Manifold -->
-    <section class="stage-panel">
-      <div class="stage-toolbar">
-        <div class="stage-badge-group">
-          <div class="stage-badge">3D Evidence & Grounding Manifold (Three.js)</div>
-        </div>
-        <div class="stage-actions">
-          <button class="stage-btn" id="btn-reset-cam" title="Reset Camera Perspective">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+    <!-- Column 2: Standard Naive LLM (The Baseline Failure) -->
+    <section class="audit-col">
+      <div class="col-header col-naive">
+        <div class="col-title-group">
+          <div class="col-icon naive">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="15" y1="9" x2="9" y2="15"></line>
+              <line x1="9" y1="9" x2="15" y2="15"></line>
             </svg>
-          </button>
+          </div>
+          <div>
+            <h2 style="color: #991b1b;">2. Standard LLM Baseline</h2>
+            <span style="font-size: 0.74rem; color: #b91c1c;">Unverified Zero-Shot LLM Output (Prompt-and-Pray)</span>
+          </div>
         </div>
+        <span class="col-tag naive">UNGUARDED</span>
       </div>
 
-      <div class="three-canvas-container" id="three-container">
-        <canvas id="three-canvas"></canvas>
-      </div>
+      <div class="col-content">
+        <div class="naive-disclaimer">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <div>
+            <strong>Clinical Danger:</strong> Standard LLMs suffer from <em>negation blindness</em>. They extract ruled-out conditions with high confidence because the keywords appear in the text.
+          </div>
+        </div>
 
-      <div class="manifold-legend">
-        <div class="legend-item">
-          <span class="legend-swatch accept"></span>
-          <span>Accepted (Score ≥ τ*)</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-swatch flag"></span>
-          <span>Review Band</span>
-        </div>
-        <div class="legend-item">
-          <span class="legend-swatch abstain"></span>
-          <span>Abstained / Contradicted</span>
+        <div id="naive-claims-list">
+          <!-- Populated dynamically to demonstrate the failure mode -->
         </div>
       </div>
     </section>
 
-    <!-- Column 3: Calibrated Clinical Claims Feed -->
-    <section class="panel panel-right">
-      <div class="panel-header">
-        <div class="panel-title-group">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2">
-            <polyline points="9 11 12 14 22 4"></polyline>
-            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-          </svg>
-          <span class="panel-title">Extracted Claims & Decisions</span>
+    <!-- Column 3: Veritas Safe Clinical Engine (Our Solution) -->
+    <section class="audit-col" style="border-color: #a7f3d0;">
+      <div class="col-header col-veritas">
+        <div class="col-title-group">
+          <div class="col-icon veritas">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+          </div>
+          <div>
+            <h2 style="color: #065f46;">3. Veritas-Clin Engine</h2>
+            <span style="font-size: 0.74rem; color: #047857;">NLI Cross-Encoder Verification + Calibrated Abstention</span>
+          </div>
         </div>
+        <span class="col-tag veritas">SAFEGUARDED</span>
       </div>
 
-      <div class="panel-body">
-        <div class="claims-summary-bar">
-          <div class="stat-chip accept">
-            <div class="stat-chip-label">Accepted</div>
-            <div class="stat-chip-val" id="stat-accept-count">0</div>
+      <div class="col-content">
+        <div class="veritas-summary-banner">
+          <div>
+            <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #047857; text-transform: uppercase; font-weight: 600;">Chart Audit Status:</span>
+            <div style="font-size: 0.95rem; font-weight: 700; color: #065f46;" id="veritas-status-headline">Auditing Findings...</div>
           </div>
-          <div class="stat-chip flag">
-            <div class="stat-chip-label">Review</div>
-            <div class="stat-chip-val" id="stat-flag-count">0</div>
-          </div>
-          <div class="stat-chip abstain">
-            <div class="stat-chip-label">Abstained</div>
-            <div class="stat-chip-val" id="stat-abstain-count">0</div>
+          <div style="text-align: right;">
+            <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #047857;">Threshold:</span>
+            <div style="font-size: 0.95rem; font-family: var(--font-mono); font-weight: 700; color: #065f46;">&tau;* = <span id="veritas-threshold-headline">0.35</span></div>
           </div>
         </div>
 
-        <div class="claims-list" id="claims-list">
-          <!-- Dynamically populated cards -->
+        <div id="veritas-claims-list">
+          <!-- Populated dynamically with audited claims & stamps -->
         </div>
       </div>
     </section>
 
   </main>
 
-  <!-- Bottom Control Deck & Decision Threshold Scrubber -->
-  <footer class="control-deck">
-    <div class="threshold-control">
-      <span class="threshold-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  <!-- Bottom Safety Controller Deck -->
+  <footer class="safety-deck">
+    <div class="slider-group">
+      <span class="slider-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
         </svg>
         Abstention Cutoff (&tau;*):
       </span>
-      <div class="threshold-slider-wrapper">
-        <input type="range" min="0.10" max="0.95" step="0.01" value="0.35" class="tau-slider" id="tau-slider">
-        <span class="tau-val-badge" id="tau-val-display">0.35</span>
-      </div>
+      <input type="range" min="0.10" max="0.95" step="0.01" value="0.35" class="clinical-slider" id="threshold-range-slider">
+      <span class="tau-indicator" id="tau-badge-display">0.35</span>
     </div>
 
-    <div class="deck-stats">
-      <div class="deck-stat-item">
-        Chart Coverage: <strong id="deck-coverage-val">90.7%</strong>
+    <div class="safety-telemetry-stats">
+      <div class="telemetry-stat">
+        Chart Automation Coverage: <strong id="stat-coverage-display">90.7%</strong>
       </div>
-      <div class="deck-stat-item">
-        Hallucination Guard: <strong id="deck-flagged-val">56.2% captured</strong>
+      <div class="telemetry-stat" style="color: #dc2626;">
+        Hallucination Guard: <strong id="stat-guard-display" style="color: #dc2626;">56.2% Caught</strong>
       </div>
-      <div class="deck-stat-item">
-        Accepted Precision: <strong style="color: #34d399;">92.9%</strong>
+      <div class="telemetry-stat" style="color: #059669;">
+        Accepted Chart Precision: <strong id="stat-precision-display" style="color: #059669;">92.9% (+7.7%)</strong>
       </div>
     </div>
   </footer>
 
-  <!-- Empirical Benchmark Telemetry Modal -->
-  <div class="modal-backdrop" id="telemetry-modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div class="panel-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="16" x2="12" y2="12"></line>
-            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+  <!-- Examiner Defense Guide Modal (Anticipated Viva Questions) -->
+  <div class="guide-modal" id="examiner-guide-modal">
+    <div class="guide-card">
+      <div class="guide-header">
+        <h3>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M2 12h20"/>
           </svg>
-          Colab T4 GPU Empirical Evaluation Telemetry
-        </div>
-        <button class="close-btn" id="btn-close-modal">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
+          Examiner Viva Defense Guide & GPU Telemetry
+        </h3>
+        <button class="btn-secondary" style="background: transparent; color: #ffffff; border-color: #334155;" id="btn-close-guide">✕ Close</button>
       </div>
 
-      <div class="modal-body">
-        <p style="font-size: 0.84rem; color: #94a3b8; line-height: 1.6;">
-          Evaluated across 40 annotated notes (20 Dev / 20 Test) using <strong>Qwen2.5-3B-Instruct</strong> (fp16) for extraction and <strong>DeBERTa-v3-base-mnli-fever-anli</strong> for verification. Decision threshold (&tau;* = 0.3499) was optimized on Dev and frozen for Test.
-        </p>
-
-        <div class="plot-grid">
-          <div class="plot-card">
-            <strong style="font-size: 0.78rem; font-family: var(--font-mono); color: #cbd5e1;">Reliability Diagram (Dev ECE: 0.1500)</strong>
-            <img src="/artifacts/plots/calibration.png" alt="Calibration Reliability Diagram" onerror="this.src='https://placehold.co/400x300/121a2b/22d3ee?text=Calibration+Curve'">
+      <div class="guide-body">
+        <div class="qa-card">
+          <div class="qa-question">1. "Why did you build an NLI verification layer instead of prompting the LLM to verify itself?"</div>
+          <div class="qa-answer">
+            <strong>The Examiner Trap:</strong> Many students think "Self-Reflection" (asking the LLM <em>"Are you sure?"</em>) works.<br>
+            <strong>Your Defense:</strong> LLM self-reflection suffers from <em>confirmation bias</em>. If the model had an attention blind spot and extracted a ruled-out condition, prompting it in the same context almost always reproduces the hallucination. Our system uses an <strong>orthogonal bidirectional cross-encoder (DeBERTa-v3)</strong> specifically trained on natural language inference to re-examine the claim against the source note independently.
           </div>
-          <div class="plot-card">
-            <strong style="font-size: 0.78rem; font-family: var(--font-mono); color: #cbd5e1;">Selective Risk vs Coverage Curve (Test Split)</strong>
-            <img src="/artifacts/plots/risk_coverage.png" alt="Risk-Coverage Trade-off Curve" onerror="this.src='https://placehold.co/400x300/121a2b/22d3ee?text=Risk+Coverage+Plot'">
+        </div>
+
+        <div class="qa-card">
+          <div class="qa-question">2. "How was the decision threshold &tau;* derived without data leakage?"</div>
+          <div class="qa-answer">
+            <strong>Your Defense:</strong> We maintained a strict 50/50 partition (20 Dev notes / 20 Test notes) using seed 7. The decision threshold (&tau;* = 0.3499) was optimized <strong>strictly on the Dev split</strong> to maximize F1 of accepted chart entries. It was then frozen in <code>policy.json</code> and applied blindly to the Test split. All reported numbers (92.9% precision, 56.2% error capture) are on the held-out Test split.
+          </div>
+        </div>
+
+        <div class="qa-card">
+          <div class="qa-question">3. "What is Expected Calibration Error (ECE) and why does it matter?"</div>
+          <div class="qa-answer">
+            <strong>Your Defense:</strong> Standard accuracy ignores whether stated confidence matches reality. An uncalibrated model can give a lethal wrong dosage with 99% confidence. ECE calculates the gap between predicted confidence and observed empirical accuracy across probability bins. Our test split achieved an ECE of <strong>0.1353</strong>.
+          </div>
+        </div>
+
+        <div>
+          <h4 style="font-size: 0.88rem; font-family: var(--font-mono); color: #0f172a; margin-bottom: 8px;">Tesla T4 GPU Empirical Evaluation Plots (Held-Out Test Split)</h4>
+          <div class="plot-row">
+            <div class="plot-box">
+              <strong style="font-size: 0.74rem; font-family: var(--font-mono); color: #64748b;">Reliability Diagram (Dev ECE: 0.1500)</strong>
+              <img src="/artifacts/plots/calibration.png" alt="Calibration Curve" onerror="this.src='https://placehold.co/400x300/f8fafc/0284c7?text=Calibration+Curve'">
+            </div>
+            <div class="plot-box">
+              <strong style="font-size: 0.74rem; font-family: var(--font-mono); color: #64748b;">Selective Risk vs Coverage Curve (Test Split)</strong>
+              <img src="/artifacts/plots/risk_coverage.png" alt="Risk-Coverage Curve" onerror="this.src='https://placehold.co/400x300/f8fafc/0284c7?text=Risk+Coverage+Plot'">
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Main Application Logic -->
+  <!-- Studio Scripts -->
   <script src="/app.js"></script>
 </body>
 </html>

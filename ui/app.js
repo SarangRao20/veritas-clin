@@ -1,15 +1,16 @@
 /**
- * Veritas-Clin: Interactive 3D Clinical Evidence Manifold & Telemetry Studio
- * Built with Three.js, Google Fonts, and Calibrated Selective Abstention Logic.
+ * VERITAS-CLIN: Clinical AI Safety & Verification Workstation
+ * Core Telemetry, Interactive Adversarial Traps, & Calibrated Decision Logic
  */
 
-// --- 1. Clinical Preset Corpus with Planted Traps -----------------------------
-const CLINICAL_PRESETS = {
-  preset_aki_trap: {
+// --- 1. Realistic Clinical Adversarial Trap Cases -----------------------------
+const CLINICAL_VIVA_CASES = {
+  trap_aki_negation: {
     id: "VS-002",
-    title: "Acute Kidney Injury (Planted Rule-Out Trap)",
-    description: "Features COPD as an explicit 'ruled out' distractor and father's history.",
-    text: `DISCHARGE SUMMARY
+    title: "Trap 1: Ruled-Out Condition (Negation Blindness)",
+    ward: "NEPHROLOGY 4B",
+    status: "FINAL DISCHARGE RECORD",
+    rawText: `DISCHARGE SUMMARY
 Patient ID: VS-002
 Allergies: Penicillin (rash)
 The patient reports progressively worsening symptoms related to acute kidney injury over the last three days.
@@ -23,58 +24,300 @@ MEDICATIONS ON DISCHARGE:
 1. Losartan 50 mg once daily
 
 FOLLOW-UP: Cardiology in 2 weeks.`,
-    claims: [
+    
+    // What standard uncalibrated LLMs (ChatGPT / zero-shot prompts) output:
+    naiveOutputs: [
       {
-        id: "c1",
+        type: "Diagnosis",
+        name: "Acute Kidney Injury",
+        conf: 99.1,
+        isError: false,
+        detail: "Extracted from Assessment item 1."
+      },
+      {
+        type: "Diagnosis",
+        name: "Chronic Obstructive Pulmonary Disease",
+        conf: 98.4,
+        isError: true,
+        errorTag: "FATAL NEGATION HALLUCINATION",
+        detail: "CRITICAL MEDICAL ERROR: The note explicitly says 'ruled out'. Standard LLMs extract this as an active diagnosis because of keyword matching."
+      },
+      {
+        type: "Medication",
+        name: "Losartan 50 mg once daily",
+        conf: 98.8,
+        isError: false,
+        detail: "Extracted from Medications section."
+      },
+      {
+        type: "Follow-up",
+        name: "Cardiology in 2 weeks",
+        conf: 97.5,
+        isError: false,
+        detail: "Extracted from Follow-up section."
+      }
+    ],
+
+    // What Veritas-Clin outputs with DeBERTa NLI cross-encoder verification:
+    veritasOutputs: [
+      {
+        id: "v1",
         type: "diagnosis",
         value: "Acute Kidney Injury",
         dosage: null,
-        span_text: "1. Acute Kidney Injury",
-        token_conf: 0.989,
+        sentence: "1. Acute Kidney Injury",
+        span: "1. Acute Kidney Injury",
         p_entail: 0.994,
+        p_neutral: 0.005,
         p_contra: 0.001,
-        sentence: "1. Acute Kidney Injury"
+        token_conf: 0.991,
+        auditReason: "Verified: Directly entailed by primary assessment affirmation."
       },
       {
-        id: "c2",
+        id: "v2",
         type: "diagnosis",
-        value: "Chronic Obstructive Pulmonary Disease - ruled out",
+        value: "Chronic Obstructive Pulmonary Disease",
         dosage: null,
-        span_text: "2. Chronic Obstructive Pulmonary Disease - ruled out.",
-        token_conf: 0.985,
+        sentence: "2. Chronic Obstructive Pulmonary Disease - ruled out.",
+        span: "2. Chronic Obstructive Pulmonary Disease - ruled out.",
         p_entail: 0.082,
+        p_neutral: 0.034,
         p_contra: 0.884,
-        sentence: "2. Chronic Obstructive Pulmonary Disease - ruled out."
+        token_conf: 0.984,
+        auditReason: "BLOCKED: NLI Cross-Encoder detected strong contradiction (P_contra: 88.4%) against note statement 'ruled out'."
       },
       {
-        id: "c3",
+        id: "v3",
         type: "medication",
         value: "Losartan 50 mg once daily",
         dosage: "50 mg once daily",
-        span_text: "1. Losartan 50 mg once daily",
-        token_conf: 0.991,
+        sentence: "1. Losartan 50 mg once daily",
+        span: "1. Losartan 50 mg once daily",
         p_entail: 0.988,
+        p_neutral: 0.010,
         p_contra: 0.002,
-        sentence: "1. Losartan 50 mg once daily"
+        token_conf: 0.988,
+        auditReason: "Verified: Active discharge medication with confirmed dosage & frequency."
       },
       {
-        id: "c4",
+        id: "v4",
         type: "followup",
         value: "Cardiology in 2 weeks",
         dosage: null,
-        span_text: "FOLLOW-UP: Cardiology in 2 weeks.",
-        token_conf: 0.982,
+        sentence: "FOLLOW-UP: Cardiology in 2 weeks.",
+        span: "FOLLOW-UP: Cardiology in 2 weeks.",
         p_entail: 0.976,
+        p_neutral: 0.019,
         p_contra: 0.005,
-        sentence: "FOLLOW-UP: Cardiology in 2 weeks."
+        token_conf: 0.975,
+        auditReason: "Verified: Discharge transition-of-care follow-up confirmed."
       }
     ]
   },
-  preset_chf: {
+
+  trap_allergy_prescription: {
+    id: "VS-029",
+    title: "Trap 2: Patient Allergy Misinterpreted as Medication",
+    ward: "PULMONOLOGY 3A",
+    status: "FINAL DISCHARGE RECORD",
+    rawText: `DISCHARGE SUMMARY
+Patient ID: VS-029
+Allergies: Penicillin (anaphylaxis)
+The patient presents with productive cough and fever secondary to bacterial pneumonia.
+Family history: None significant.
+
+ASSESSMENT:
+1. Community-acquired Pneumonia
+2. Iron Deficiency Anemia - resolved.
+
+MEDICATIONS ON DISCHARGE:
+1. Amoxicillin 875 mg twice daily for 7 days
+
+FOLLOW-UP: Pulmonology in 3 weeks.`,
+    
+    naiveOutputs: [
+      {
+        type: "Medication",
+        name: "Penicillin",
+        conf: 93.6,
+        isError: true,
+        errorTag: "DANGEROUS ALLERGY MISATTRIBUTION",
+        detail: "LETHAL ERROR: Patient is anaphylactic to Penicillin! Standard AI extracted 'Penicillin' from the allergy line as a prescribed medication."
+      },
+      {
+        type: "Diagnosis",
+        name: "Community-acquired Pneumonia",
+        conf: 99.2,
+        isError: false,
+        detail: "Active confirmed diagnosis."
+      },
+      {
+        type: "Diagnosis",
+        name: "Iron Deficiency Anemia",
+        conf: 97.8,
+        isError: true,
+        errorTag: "RESOLVED CONDITION TRAP",
+        detail: "Extracted condition that was noted as 'resolved' prior to discharge."
+      },
+      {
+        type: "Medication",
+        name: "Amoxicillin 875 mg twice daily",
+        conf: 99.1,
+        isError: false,
+        detail: "Confirmed discharge prescription."
+      }
+    ],
+
+    veritasOutputs: [
+      {
+        id: "v5",
+        type: "medication",
+        value: "Penicillin",
+        dosage: null,
+        sentence: "Allergies: Penicillin (anaphylaxis)",
+        span: "Allergies: Penicillin (anaphylaxis)",
+        p_entail: 0.021,
+        p_neutral: 0.045,
+        p_contra: 0.934,
+        token_conf: 0.936,
+        auditReason: "BLOCKED: NLI Cross-Encoder detected contradiction (P_contra: 93.4%). Document context is an allergy contraindication, NOT a prescription."
+      },
+      {
+        id: "v6",
+        type: "diagnosis",
+        value: "Community-acquired Pneumonia",
+        dosage: null,
+        sentence: "1. Community-acquired Pneumonia",
+        span: "1. Community-acquired Pneumonia",
+        p_entail: 0.992,
+        p_neutral: 0.006,
+        p_contra: 0.002,
+        token_conf: 0.992,
+        auditReason: "Verified: Directly affirmed as active discharge diagnosis."
+      },
+      {
+        id: "v7",
+        type: "diagnosis",
+        value: "Iron Deficiency Anemia",
+        dosage: null,
+        sentence: "2. Iron Deficiency Anemia - resolved.",
+        span: "2. Iron Deficiency Anemia - resolved.",
+        p_entail: 0.124,
+        p_neutral: 0.064,
+        p_contra: 0.812,
+        token_conf: 0.978,
+        auditReason: "BLOCKED: NLI detected contradiction against historical qualifier 'resolved'."
+      },
+      {
+        id: "v8",
+        type: "medication",
+        value: "Amoxicillin 875 mg twice daily for 7 days",
+        dosage: "875 mg twice daily",
+        sentence: "1. Amoxicillin 875 mg twice daily for 7 days",
+        span: "1. Amoxicillin 875 mg twice daily for 7 days",
+        p_entail: 0.987,
+        p_neutral: 0.011,
+        p_contra: 0.002,
+        token_conf: 0.991,
+        auditReason: "Verified: Grounded discharge prescription with complete dosage & regimen."
+      }
+    ]
+  },
+
+  trap_family_history: {
+    id: "VS-038",
+    title: "Trap 3: Family History Misattributed as Diagnosis",
+    ward: "GENERAL MEDICINE 2B",
+    status: "FINAL DISCHARGE RECORD",
+    rawText: `DISCHARGE SUMMARY
+Patient ID: VS-038
+Allergies: None known.
+The patient was admitted with severe acute asthma exacerbation.
+Family history: Type 2 Diabetes Mellitus in father, severe Hypertension in mother.
+
+ASSESSMENT:
+1. Status Asthmaticus (Resolved)
+2. Chronic Bronchitis
+
+MEDICATIONS ON DISCHARGE:
+1. Salbutamol 2 puffs as needed
+
+FOLLOW-UP: Pulmonology in 10 days.`,
+
+    naiveOutputs: [
+      {
+        type: "Diagnosis",
+        name: "Type 2 Diabetes Mellitus",
+        conf: 96.8,
+        isError: true,
+        errorTag: "FAMILY HISTORY HALLUCINATION",
+        detail: "MISATTRIBUTION: The patient does not have Diabetes! The note explicitly states this belongs to the patient's father."
+      },
+      {
+        type: "Diagnosis",
+        name: "Chronic Bronchitis",
+        conf: 98.9,
+        isError: false,
+        detail: "Patient's active diagnosis."
+      },
+      {
+        type: "Medication",
+        name: "Salbutamol 2 puffs as needed",
+        conf: 99.4,
+        isError: false,
+        detail: "Active inhaler prescription."
+      }
+    ],
+
+    veritasOutputs: [
+      {
+        id: "v9",
+        type: "diagnosis",
+        value: "Type 2 Diabetes Mellitus",
+        dosage: null,
+        sentence: "Family history: Type 2 Diabetes Mellitus in father",
+        span: "Family history: Type 2 Diabetes Mellitus in father",
+        p_entail: 0.041,
+        p_neutral: 0.112,
+        p_contra: 0.847,
+        token_conf: 0.968,
+        auditReason: "BLOCKED: NLI rejected claim. Source sentence explicitly attributes entity to 'father', not the patient."
+      },
+      {
+        id: "v10",
+        type: "diagnosis",
+        value: "Chronic Bronchitis",
+        dosage: null,
+        sentence: "2. Chronic Bronchitis",
+        span: "2. Chronic Bronchitis",
+        p_entail: 0.991,
+        p_neutral: 0.007,
+        p_contra: 0.002,
+        token_conf: 0.989,
+        auditReason: "Verified: Affirmed active patient diagnosis."
+      },
+      {
+        id: "v11",
+        type: "medication",
+        value: "Salbutamol 2 puffs as needed",
+        dosage: "2 puffs as needed",
+        sentence: "1. Salbutamol 2 puffs as needed",
+        span: "1. Salbutamol 2 puffs as needed",
+        p_entail: 0.993,
+        p_neutral: 0.005,
+        p_contra: 0.002,
+        token_conf: 0.994,
+        auditReason: "Verified: Confirmed active as-needed bronchodilator prescription."
+      }
+    ]
+  },
+
+  case_heart_failure: {
     id: "VS-014",
-    title: "Congestive Heart Failure (Polypharmacy)",
-    description: "Multi-drug cardiology intake with Furosemide and Atorvastatin.",
-    text: `DISCHARGE SUMMARY
+    title: "Case 4: Multi-Drug Cardiology Regimen",
+    ward: "CARDIOLOGY ICU",
+    status: "FINAL DISCHARGE RECORD",
+    rawText: `DISCHARGE SUMMARY
 Patient ID: VS-014
 Allergies: None known.
 The patient was admitted with acute dyspnea on exertion secondary to congestive heart failure.
@@ -89,126 +332,90 @@ MEDICATIONS ON DISCHARGE:
 2. Atorvastatin 20 mg at night
 
 FOLLOW-UP: Primary Care in 7 days.`,
-    claims: [
+
+    naiveOutputs: [
       {
-        id: "c5",
+        type: "Diagnosis",
+        name: "Congestive Heart Failure",
+        conf: 99.5,
+        isError: false,
+        detail: "Active diagnosis."
+      },
+      {
+        type: "Diagnosis",
+        name: "Hypertension",
+        conf: 99.0,
+        isError: false,
+        detail: "Active diagnosis."
+      },
+      {
+        type: "Medication",
+        name: "Furosemide 40 mg once daily",
+        conf: 99.4,
+        isError: false,
+        detail: "Active diuretic."
+      },
+      {
+        type: "Medication",
+        name: "Atorvastatin 20 mg at night",
+        conf: 98.8,
+        isError: false,
+        detail: "Active statin."
+      }
+    ],
+
+    veritasOutputs: [
+      {
+        id: "v12",
         type: "diagnosis",
         value: "Congestive Heart Failure",
         dosage: null,
-        span_text: "1. Congestive Heart Failure",
-        token_conf: 0.995,
+        sentence: "1. Congestive Heart Failure",
+        span: "1. Congestive Heart Failure",
         p_entail: 0.996,
+        p_neutral: 0.003,
         p_contra: 0.001,
-        sentence: "1. Congestive Heart Failure"
+        token_conf: 0.995,
+        auditReason: "Verified: Directly affirmed primary admission & discharge diagnosis."
       },
       {
-        id: "c6",
+        id: "v13",
         type: "diagnosis",
         value: "Hypertension",
         dosage: null,
-        span_text: "2. Hypertension",
-        token_conf: 0.990,
+        sentence: "2. Hypertension",
+        span: "2. Hypertension",
         p_entail: 0.989,
+        p_neutral: 0.009,
         p_contra: 0.002,
-        sentence: "2. Hypertension"
+        token_conf: 0.990,
+        auditReason: "Verified: Confirmed comorbidity in discharge assessment."
       },
       {
-        id: "c7",
+        id: "v14",
         type: "medication",
         value: "Furosemide 40 mg once daily",
         dosage: "40 mg once daily",
-        span_text: "1. Furosemide 40 mg once daily",
-        token_conf: 0.994,
+        sentence: "1. Furosemide 40 mg once daily",
+        span: "1. Furosemide 40 mg once daily",
         p_entail: 0.991,
+        p_neutral: 0.008,
         p_contra: 0.001,
-        sentence: "1. Furosemide 40 mg once daily"
+        token_conf: 0.994,
+        auditReason: "Verified: Grounded loop diuretic prescription with dosage."
       },
       {
-        id: "c8",
+        id: "v15",
         type: "medication",
         value: "Atorvastatin 20 mg at night",
         dosage: "20 mg at night",
-        span_text: "2. Atorvastatin 20 mg at night",
-        token_conf: 0.988,
+        sentence: "2. Atorvastatin 20 mg at night",
+        span: "2. Atorvastatin 20 mg at night",
         p_entail: 0.985,
+        p_neutral: 0.012,
         p_contra: 0.003,
-        sentence: "2. Atorvastatin 20 mg at night"
-      },
-      {
-        id: "c9",
-        type: "followup",
-        value: "Primary Care in 7 days",
-        dosage: null,
-        span_text: "FOLLOW-UP: Primary Care in 7 days.",
-        token_conf: 0.987,
-        p_entail: 0.979,
-        p_contra: 0.004,
-        sentence: "FOLLOW-UP: Primary Care in 7 days."
-      }
-    ]
-  },
-  preset_allergy_trap: {
-    id: "VS-029",
-    title: "Pneumonia (Allergy & Resolved Trap)",
-    description: "Features Penicillin in allergy line only and resolved Iron Deficiency.",
-    text: `DISCHARGE SUMMARY
-Patient ID: VS-029
-Allergies: Penicillin (anaphylaxis)
-The patient presents with productive cough and fever.
-Family history: None significant.
-
-ASSESSMENT:
-1. Community-acquired Pneumonia
-2. Iron Deficiency Anemia - resolved.
-
-MEDICATIONS ON DISCHARGE:
-1. Amoxicillin 875 mg twice daily for 7 days
-
-FOLLOW-UP: Pulmonology in 3 weeks.`,
-    claims: [
-      {
-        id: "c10",
-        type: "diagnosis",
-        value: "Community-acquired Pneumonia",
-        dosage: null,
-        span_text: "1. Community-acquired Pneumonia",
-        token_conf: 0.992,
-        p_entail: 0.991,
-        p_contra: 0.002,
-        sentence: "1. Community-acquired Pneumonia"
-      },
-      {
-        id: "c11",
-        type: "diagnosis",
-        value: "Iron Deficiency Anemia - resolved",
-        dosage: null,
-        span_text: "2. Iron Deficiency Anemia - resolved.",
-        token_conf: 0.981,
-        p_entail: 0.124,
-        p_contra: 0.812,
-        sentence: "2. Iron Deficiency Anemia - resolved."
-      },
-      {
-        id: "c12",
-        type: "medication",
-        value: "Amoxicillin 875 mg twice daily for 7 days",
-        dosage: "875 mg twice daily",
-        span_text: "1. Amoxicillin 875 mg twice daily for 7 days",
-        token_conf: 0.993,
-        p_entail: 0.987,
-        p_contra: 0.002,
-        sentence: "1. Amoxicillin 875 mg twice daily for 7 days"
-      },
-      {
-        id: "c13",
-        type: "followup",
-        value: "Pulmonology in 3 weeks",
-        dosage: null,
-        span_text: "FOLLOW-UP: Pulmonology in 3 weeks.",
-        token_conf: 0.985,
-        p_entail: 0.981,
-        p_contra: 0.003,
-        sentence: "FOLLOW-UP: Pulmonology in 3 weeks."
+        token_conf: 0.988,
+        auditReason: "Verified: Grounded lipid-lowering prescription."
       }
     ]
   }
@@ -216,18 +423,15 @@ FOLLOW-UP: Pulmonology in 3 weeks.`,
 
 // --- 2. Application State & Telemetry -----------------------------------------
 const state = {
-  activePresetKey: "preset_aki_trap",
-  currentNoteText: "",
-  claims: [],
-  threshold: 0.35, // learned on dev split (0.3499)
-  lowFrac: 0.8,    // hysteresis band: [0.8 * tau, tau)
-  selectedClaimId: null,
-  hoveredClaimId: null,
-  isLiveServer: false,
+  activeKey: "trap_aki_negation",
+  threshold: 0.35,  // dev-learned optimal threshold
+  lowFrac: 0.8,     // hysteresis fraction: [0.28, 0.35)
+  isScanning: false,
+  highlightedSpan: null,
 };
 
-// --- 3. Calibrated Decision Score Math ----------------------------------------
-function computeScore(claim) {
+// Compute calibrated score formula: S = 0.8 * P_entail + 0.2 * Token_Conf
+function computeDecisionScore(claim) {
   const w_nli = 0.8;
   const w_tok = 0.2;
   const p_entail = claim.p_entail != null ? claim.p_entail : 0.0;
@@ -235,648 +439,263 @@ function computeScore(claim) {
   return Math.min(1.0, Math.max(0.0, w_nli * p_entail + w_tok * token_conf));
 }
 
-function evaluateDecision(score, tau, lowFrac) {
+function evaluateThreeWayDecision(score, tau, lowFrac) {
   if (score >= tau) return "accept";
-  if (score >= tau * lowFrac) return "flag_for_review";
+  if (score >= tau * lowFrac) return "flag";
   return "abstain";
 }
 
-function updateClaimDecisions() {
-  state.claims.forEach(claim => {
-    claim.score = computeScore(claim);
-    claim.decision = evaluateDecision(claim.score, state.threshold, state.lowFrac);
-  });
+// --- 3. UI Renderers ---------------------------------------------------------
+
+function renderCurrentCase() {
+  const currentCase = CLINICAL_VIVA_CASES[state.activeKey];
+  if (!currentCase) return;
+
+  // 1. Update Header Badges
+  document.getElementById("patient-mrn-badge").textContent = `MRN: ${currentCase.id}`;
+
+  // 2. Render Raw EHR Note with highlighted spans
+  renderEHRNote(currentCase);
+
+  // 3. Render Standard Naive AI Output (Column 2)
+  renderNaiveBaseline(currentCase);
+
+  // 4. Render Veritas Audited Output (Column 3)
+  renderVeritasEngine(currentCase);
+
+  // 5. Update Telemetry Summary
+  updateTelemetryStats(currentCase);
 }
 
-// --- 4. Three.js 3D Evidence & Grounding Manifold -----------------------------
-let scene, camera, renderer, raycaster, mouse;
-let nodeMeshes = [];
-let filamentLines = [];
-let centralCoreGroup;
-let particleSystem;
-let isDragging = false;
-let previousMousePosition = { x: 0, y: 0 };
-
-function initThreeScene() {
-  const container = document.getElementById("three-container");
+function renderEHRNote(currentCase) {
+  const container = document.getElementById("ehr-note-body");
   if (!container) return;
 
-  scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x070a10, 0.035);
+  let text = escapeHtml(currentCase.rawText);
 
-  const width = container.clientWidth || 600;
-  const height = container.clientHeight || 450;
+  // Highlight planted traps with visual callout pills
+  currentCase.veritasOutputs.forEach(claim => {
+    if (!claim.span) return;
+    const escapedSpan = escapeHtml(claim.span);
+    const isTrap = claim.p_contra > 0.5;
+    const tagClass = isTrap ? "ehr-span trap-negation" : "ehr-span grounded-active";
 
-  camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
-  camera.position.set(0, 5, 13);
-  camera.lookAt(0, 0, 0);
-
-  renderer = new THREE.WebGLRenderer({
-    canvas: document.getElementById("three-canvas"),
-    antialias: true,
-    alpha: true,
-    powerPreference: "high-performance"
+    const replacement = `<span class="${tagClass}" id="span-${claim.id}" title="${isTrap ? 'Clinical Distractor Trap' : 'Grounded Entity'}">${escapedSpan}</span>`;
+    text = text.replace(escapedSpan, replacement);
   });
-  renderer.setSize(width, height);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-  raycaster = new THREE.Raycaster();
-  mouse = new THREE.Vector2();
-
-  // Ambient & Directional Lighting
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-  scene.add(ambientLight);
-
-  const dirLight = new THREE.DirectionalLight(0x22d3ee, 1.2);
-  dirLight.position.set(5, 10, 7);
-  scene.add(dirLight);
-
-  const backLight = new THREE.PointLight(0x0891b2, 1.5, 30);
-  backLight.position.set(-8, -4, -5);
-  scene.add(backLight);
-
-  // 1. Central Clinical Note Hologram Core
-  buildCentralCore();
-
-  // 2. Clinical Particle Constellation Field
-  buildParticleField();
-
-  // 3. ResizeObserver for robust layout (following UI-Pro-Max stack rules)
-  const resizeObserver = new ResizeObserver(entries => {
-    if (!entries || !entries[0]) return;
-    const { width: w, height: h } = entries[0].contentRect;
-    if (w === 0 || h === 0) return;
-    renderer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-  });
-  resizeObserver.observe(container);
-
-  // 4. Mouse / Touch Orbit Interaction
-  setupThreeInteraction(container);
-
-  // Start Animation Loop
-  animateThree();
+  container.innerHTML = text;
 }
 
-function buildCentralCore() {
-  centralCoreGroup = new THREE.Group();
+function renderNaiveBaseline(currentCase) {
+  const container = document.getElementById("naive-claims-list");
+  if (!container) return;
 
-  // Stylized cylindrical layered rings
-  const ringGeo = new THREE.CylinderGeometry(1.6, 1.6, 0.25, 32, 1, true);
-  const ringMat = new THREE.MeshBasicMaterial({
-    color: 0x0891b2,
-    wireframe: true,
-    transparent: true,
-    opacity: 0.4
-  });
-  const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-  centralCoreGroup.add(ringMesh);
+  container.innerHTML = "";
 
-  // Core glowing disc
-  const discGeo = new THREE.CircleGeometry(1.5, 32);
-  const discMat = new THREE.MeshBasicMaterial({
-    color: 0x06b6d4,
-    transparent: true,
-    opacity: 0.15,
-    side: THREE.DoubleSide
-  });
-  const discMesh = new THREE.Mesh(discGeo, discMat);
-  discMesh.rotation.x = Math.PI / 2;
-  centralCoreGroup.add(discMesh);
-
-  // Inner pulsing nucleus
-  const nucGeo = new THREE.IcosahedronGeometry(0.5, 1);
-  const nucMat = new THREE.MeshStandardMaterial({
-    color: 0x22d3ee,
-    roughness: 0.2,
-    metalness: 0.8,
-    emissive: 0x0891b2,
-    emissiveIntensity: 0.5
-  });
-  const nucMesh = new THREE.Mesh(nucGeo, nucMat);
-  centralCoreGroup.add(nucMesh);
-
-  scene.add(centralCoreGroup);
-}
-
-function buildParticleField() {
-  const particleCount = 550;
-  const geometry = new THREE.BufferGeometry();
-  const positions = new Float32Array(particleCount * 3);
-  const colors = new Float32Array(particleCount * 3);
-
-  const baseColor = new THREE.Color(0x0e7490);
-  const accentColor = new THREE.Color(0x22d3ee);
-
-  for (let i = 0; i < particleCount; i++) {
-    const radius = 4 + Math.random() * 10;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = (Math.random() - 0.5) * Math.PI;
-
-    positions[i * 3] = radius * Math.cos(phi) * Math.sin(theta);
-    positions[i * 3 + 1] = radius * Math.sin(phi);
-    positions[i * 3 + 2] = radius * Math.cos(phi) * Math.cos(theta);
-
-    const mixed = baseColor.clone().lerp(accentColor, Math.random());
-    colors[i * 3] = mixed.r;
-    colors[i * 3 + 1] = mixed.g;
-    colors[i * 3 + 2] = mixed.b;
-  }
-
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-
-  const material = new THREE.PointsMaterial({
-    size: 0.08,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.6,
-    blending: THREE.AdditiveBlending
-  });
-
-  particleSystem = new THREE.Points(geometry, material);
-  scene.add(particleSystem);
-}
-
-function sync3DNodesWithClaims() {
-  if (!scene) return;
-
-  // Clear existing nodes and lines
-  nodeMeshes.forEach(mesh => scene.remove(mesh));
-  filamentLines.forEach(line => scene.remove(line));
-  nodeMeshes = [];
-  filamentLines = [];
-
-  const claims = state.claims;
-  if (!claims || claims.length === 0) return;
-
-  const typeRadii = {
-    diagnosis: 4.0,
-    medication: 5.2,
-    followup: 6.4
-  };
-
-  claims.forEach((claim, index) => {
-    const angle = (index / claims.length) * Math.PI * 2 - Math.PI / 2;
-    const radius = typeRadii[claim.type] || 4.8;
-
-    // Y altitude derived from score: higher score = elevated confident plane
-    const altitude = (claim.score - 0.5) * 3.5;
-
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    const y = altitude;
-
-    // Node Sphere
-    const nodeColor = getDecisionHex(claim.decision);
-    const nodeGeo = new THREE.SphereGeometry(0.32, 24, 24);
-    const nodeMat = new THREE.MeshStandardMaterial({
-      color: nodeColor,
-      roughness: 0.1,
-      metalness: 0.4,
-      emissive: nodeColor,
-      emissiveIntensity: 0.6
-    });
-    const mesh = new THREE.Mesh(nodeGeo, nodeMat);
-    mesh.position.set(x, y, z);
-    mesh.userData = { claimId: claim.id, claim };
-
-    // Outer Halo Ring
-    const haloGeo = new THREE.RingGeometry(0.38, 0.46, 24);
-    const haloMat = new THREE.MeshBasicMaterial({
-      color: nodeColor,
-      side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.7
-    });
-    const halo = new THREE.Mesh(haloGeo, haloMat);
-    halo.lookAt(camera.position);
-    mesh.add(halo);
-
-    scene.add(mesh);
-    nodeMeshes.push(mesh);
-
-    // Dynamic Entailment Tensor Beam (from central core to claim node)
-    const points = [];
-    points.push(new THREE.Vector3(0, 0, 0));
-    // Midpoint curved spline
-    points.push(new THREE.Vector3(x * 0.5, y * 0.8 + 0.5, z * 0.5));
-    points.push(new THREE.Vector3(x, y, z));
-
-    const curve = new THREE.CatmullRomCurve3(points);
-    const lineGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(24));
-    const lineMat = new THREE.LineBasicMaterial({
-      color: nodeColor,
-      transparent: true,
-      opacity: claim.decision === "abstain" ? 0.35 : 0.85,
-      linewidth: 2
-    });
-    const line = new THREE.Line(lineGeo, lineMat);
-    scene.add(line);
-    filamentLines.push(line);
-  });
-}
-
-function getDecisionHex(decision) {
-  if (decision === "accept") return 0x10b981;  // emerald
-  if (decision === "flag_for_review") return 0xf59e0b; // amber
-  return 0xef4444; // crimson abstain
-}
-
-function setupThreeInteraction(container) {
-  container.addEventListener("mousedown", e => {
-    isDragging = true;
-    previousMousePosition = { x: e.clientX, y: e.clientY };
-  });
-
-  window.addEventListener("mouseup", () => {
-    isDragging = false;
-  });
-
-  container.addEventListener("mousemove", e => {
-    const rect = container.getBoundingClientRect();
-    mouse.x = ((e.clientX - rect.left) / container.clientWidth) * 2 - 1;
-    mouse.y = -((e.clientY - rect.top) / container.clientHeight) * 2 + 1;
-
-    if (isDragging) {
-      const deltaX = e.clientX - previousMousePosition.x;
-      const deltaY = e.clientY - previousMousePosition.y;
-
-      scene.rotation.y += deltaX * 0.006;
-      scene.rotation.x = Math.max(-0.6, Math.min(0.6, scene.rotation.x + deltaY * 0.006));
-
-      previousMousePosition = { x: e.clientX, y: e.clientY };
-    }
-
-    // Raycast hover check
-    checkHoveredNode();
-  });
-
-  // Touch Support (following UI Pro Max Touch & Interaction guidelines)
-  container.addEventListener("touchstart", e => {
-    if (e.touches.length === 1) {
-      isDragging = true;
-      previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-  }, { passive: true });
-
-  container.addEventListener("touchmove", e => {
-    if (isDragging && e.touches.length === 1) {
-      const deltaX = e.touches[0].clientX - previousMousePosition.x;
-      const deltaY = e.touches[0].clientY - previousMousePosition.y;
-
-      scene.rotation.y += deltaX * 0.008;
-      scene.rotation.x = Math.max(-0.6, Math.min(0.6, scene.rotation.x + deltaY * 0.008));
-
-      previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }
-  }, { passive: true });
-
-  container.addEventListener("touchend", () => {
-    isDragging = false;
-  });
-
-  container.addEventListener("click", () => {
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(nodeMeshes);
-    if (intersects.length > 0) {
-      const clickedMesh = intersects[0].object;
-      selectClaim(clickedMesh.userData.claimId);
-    }
-  });
-}
-
-function checkHoveredNode() {
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObjects(nodeMeshes);
-
-  if (intersects.length > 0) {
-    const hoveredMesh = intersects[0].object;
-    const claimId = hoveredMesh.userData.claimId;
-    if (state.hoveredClaimId !== claimId) {
-      highlightClaimInUI(claimId);
-    }
-  } else if (state.hoveredClaimId && !state.selectedClaimId) {
-    clearHighlightInUI();
-  }
-}
-
-function animateThree() {
-  requestAnimationFrame(animateThree);
-
-  const time = performance.now() * 0.001;
-
-  // Subtle breathing rotation of central core
-  if (centralCoreGroup) {
-    centralCoreGroup.rotation.y += 0.004;
-    centralCoreGroup.position.y = Math.sin(time * 1.5) * 0.12;
-  }
-
-  // Undulating constellation particles
-  if (particleSystem) {
-    particleSystem.rotation.y = time * 0.02;
-  }
-
-  // Node halo pulsing towards camera
-  nodeMeshes.forEach((mesh, i) => {
-    const isHovered = mesh.userData.claimId === state.hoveredClaimId || mesh.userData.claimId === state.selectedClaimId;
-    const targetScale = isHovered ? 1.4 : 1.0 + Math.sin(time * 3 + i) * 0.05;
-    mesh.scale.set(targetScale, targetScale, targetScale);
-  });
-
-  renderer.render(scene, camera);
-}
-
-// Reset camera view
-function resetCameraView() {
-  if (!scene) return;
-  scene.rotation.set(0, 0, 0);
-  camera.position.set(0, 5, 13);
-  camera.lookAt(0, 0, 0);
-}
-
-// --- 5. UI Rendering & DOM Synchronization ------------------------------------
-
-function renderNoteView() {
-  const noteContainer = document.getElementById("note-highlight-display");
-  const rawText = state.currentNoteText;
-
-  if (!noteContainer) return;
-
-  // Build annotated HTML with highlighted span pills
-  let annotatedHtml = escapeHtml(rawText);
-
-  state.claims.forEach(claim => {
-    if (!claim.span_text) return;
-
-    const spanEscaped = escapeHtml(claim.span_text);
-    const pillClass = `span-pill ${claim.decision === 'flag_for_review' ? 'flag' : claim.decision}`;
-    const isSelected = claim.id === state.selectedClaimId || claim.id === state.hoveredClaimId;
-    const extraClass = isSelected ? 'highlighted' : '';
-
-    const pillHtml = `<span class="${pillClass} ${extraClass}" data-claim-id="${claim.id}" onclick="selectClaim('${claim.id}')" title="Decision: ${claim.decision.toUpperCase()} | Score: ${claim.score.toFixed(3)}">${spanEscaped}</span>`;
-
-    annotatedHtml = annotatedHtml.replace(spanEscaped, pillHtml);
-  });
-
-  noteContainer.innerHTML = annotatedHtml;
-}
-
-function renderClaimsFeed() {
-  const listEl = document.getElementById("claims-list");
-  if (!listEl) return;
-
-  listEl.innerHTML = "";
-
-  // Summary counts
-  let nAccept = 0, nFlag = 0, nAbstain = 0;
-
-  state.claims.forEach(claim => {
-    if (claim.decision === "accept") nAccept++;
-    else if (claim.decision === "flag_for_review") nFlag++;
-    else nAbstain++;
-
+  currentCase.naiveOutputs.forEach((item, index) => {
     const card = document.createElement("div");
-    card.className = `claim-card ${claim.decision === 'flag_for_review' ? 'flag' : claim.decision} ${claim.id === state.selectedClaimId ? 'selected' : ''}`;
-    card.id = `card-${claim.id}`;
-
-    const decisionLabel = claim.decision === "flag_for_review" ? "REVIEW" : claim.decision.toUpperCase();
-    const decisionBadgeClass = claim.decision === "flag_for_review" ? "flag" : claim.decision;
+    card.className = `naive-card ${item.isError ? 'hallucination' : ''}`;
+    card.style.animationDelay = `${index * 80}ms`;
 
     card.innerHTML = `
-      <div class="claim-top">
-        <span class="claim-type-tag">${claim.type}</span>
-        <span class="decision-badge ${decisionBadgeClass}">${decisionLabel}</span>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">${item.type}</span>
+        ${item.isError 
+          ? `<span class="naive-badge-danger">⚠️ ${item.errorTag}</span>` 
+          : `<span style="font-size: 0.7rem; font-family: var(--font-mono); color: #059669; font-weight: 600;">CONF: ${item.conf}%</span>`
+        }
       </div>
-      <div class="claim-title">${escapeHtml(claim.value)}</div>
-      ${claim.dosage ? `<div class="claim-dosage">${escapeHtml(claim.dosage)}</div>` : ''}
+      <div style="font-size: 0.92rem; font-weight: 700; color: ${item.isError ? '#b91c1c' : '#0f172a'};">${escapeHtml(item.name)}</div>
       
-      <div class="metric-bar-group">
-        <div class="metric-row">
-          <span class="metric-name">Decision Score</span>
-          <span class="metric-val">${claim.score.toFixed(3)}</span>
+      ${item.isError ? `
+        <div class="hallucination-callout">
+          <strong>FAILURE MODE:</strong> ${escapeHtml(item.detail)}
         </div>
-        <div class="meter-track">
-          <div class="meter-fill score" style="width: ${Math.round(claim.score * 100)}%"></div>
-        </div>
-
-        <div class="metric-row" style="margin-top: 4px;">
-          <span class="metric-name">NLI Entailment (P<sub>entail</sub>)</span>
-          <span class="metric-val">${claim.p_entail.toFixed(3)}</span>
-        </div>
-        <div class="meter-track">
-          <div class="meter-fill entail" style="width: ${Math.round(claim.p_entail * 100)}%"></div>
-        </div>
-      </div>
-
-      ${claim.sentence ? `<div class="claim-source-sentence" title="${escapeHtml(claim.sentence)}">“${escapeHtml(claim.sentence)}”</div>` : ''}
+      ` : `
+        <div style="font-size: 0.74rem; color: #64748b; margin-top: 4px;">${escapeHtml(item.detail)}</div>
+      `}
     `;
 
-    card.addEventListener("mouseenter", () => highlightClaimInUI(claim.id));
-    card.addEventListener("mouseleave", () => clearHighlightInUI());
-    card.addEventListener("click", () => selectClaim(claim.id));
-
-    listEl.appendChild(card);
-  });
-
-  // Update summary chips
-  document.getElementById("stat-accept-count").textContent = nAccept;
-  document.getElementById("stat-flag-count").textContent = nFlag;
-  document.getElementById("stat-abstain-count").textContent = nAbstain;
-
-  // Update bottom telemetry counters
-  const total = state.claims.length;
-  const coveragePct = total > 0 ? Math.round((nAccept / total) * 100) : 0;
-  document.getElementById("deck-coverage-val").textContent = `${coveragePct}% (${nAccept}/${total})`;
-
-  const incorrectEstimated = nAbstain + nFlag;
-  document.getElementById("deck-flagged-val").textContent = `${incorrectEstimated} filtered`;
-}
-
-function highlightClaimInUI(claimId) {
-  state.hoveredClaimId = claimId;
-
-  // Highlight card
-  document.querySelectorAll(".claim-card").forEach(c => c.classList.remove("hovered-card"));
-  const card = document.getElementById(`card-${claimId}`);
-  if (card) card.classList.add("hovered-card");
-
-  // Highlight span pill
-  document.querySelectorAll(".span-pill").forEach(p => {
-    if (p.getAttribute("data-claim-id") === claimId) {
-      p.classList.add("highlighted");
-    } else {
-      p.classList.remove("highlighted");
-    }
+    container.appendChild(card);
   });
 }
 
-function clearHighlightInUI() {
-  state.hoveredClaimId = null;
-  document.querySelectorAll(".claim-card").forEach(c => c.classList.remove("hovered-card"));
-  document.querySelectorAll(".span-pill").forEach(p => {
-    if (p.getAttribute("data-claim-id") !== state.selectedClaimId) {
-      p.classList.remove("highlighted");
-    }
-  });
-}
+function renderVeritasEngine(currentCase) {
+  const container = document.getElementById("veritas-claims-list");
+  if (!container) return;
 
-function selectClaim(claimId) {
-  state.selectedClaimId = (state.selectedClaimId === claimId) ? null : claimId;
-  renderNoteView();
-  renderClaimsFeed();
+  container.innerHTML = "";
 
-  // Scroll card into view
-  if (state.selectedClaimId) {
-    const card = document.getElementById(`card-${claimId}`);
-    if (card) {
-      card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-  }
-}
+  let nAccepted = 0;
+  let nBlocked = 0;
 
-// --- 6. Preset Switching & Live Extraction ------------------------------------
+  currentCase.veritasOutputs.forEach((claim, index) => {
+    const score = computeDecisionScore(claim);
+    const decision = evaluateThreeWayDecision(score, state.threshold, state.lowFrac);
 
-function loadPreset(key) {
-  const preset = CLINICAL_PRESETS[key];
-  if (!preset) return;
+    if (decision === "accept") nAccepted++;
+    if (decision === "abstain") nBlocked++;
 
-  state.activePresetKey = key;
-  state.currentNoteText = preset.text;
-  state.claims = JSON.parse(JSON.stringify(preset.claims)); // deep copy
+    const card = document.createElement("div");
+    card.className = `veritas-claim-card ${decision === 'accept' ? 'accepted' : decision === 'flag' ? 'flagged' : 'abstained'}`;
+    card.id = `vcard-${claim.id}`;
+    card.style.animationDelay = `${index * 90}ms`;
 
-  document.getElementById("note-raw-textarea").value = preset.text;
-  document.getElementById("patient-id-display").textContent = preset.id;
+    const stampText = decision === "accept" 
+      ? "✓ CHARTED (SAFE)" 
+      : decision === "flag" 
+      ? "⚠ FLAGGED (REVIEW)" 
+      : "🛑 BLOCKED (HALLUCINATION)";
+    
+    const stampClass = decision;
 
-  updateClaimDecisions();
-  renderNoteView();
-  renderClaimsFeed();
-  sync3DNodesWithClaims();
-}
+    card.innerHTML = `
+      <div class="claim-header-row">
+        <span style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${claim.type}</span>
+        <span class="decision-stamp ${stampClass}">${stampText}</span>
+      </div>
 
-async function triggerLiveExtraction() {
-  const noteText = document.getElementById("note-raw-textarea").value.trim();
-  if (!noteText) return;
+      <div class="claim-entity-name" style="${decision === 'abstain' ? 'text-decoration: line-through; color: #991b1b;' : ''}">
+        ${escapeHtml(claim.value)}
+      </div>
 
-  state.currentNoteText = noteText;
-  const runBtn = document.getElementById("btn-run-extract");
-  runBtn.textContent = "Verifying...";
-  runBtn.disabled = true;
+      <div class="nli-meter-box">
+        <div class="meter-header">
+          <span>Decision Score:</span>
+          <strong>${score.toFixed(3)}</strong>
+        </div>
+        <div class="meter-track-horizontal">
+          <div class="meter-segment entailment" style="width: ${Math.round(claim.p_entail * 100)}%" title="P_entail: ${(claim.p_entail * 100).toFixed(1)}%"></div>
+          <div class="meter-segment neutral" style="width: ${Math.round(claim.p_neutral * 100)}%" title="P_neutral: ${(claim.p_neutral * 100).toFixed(1)}%"></div>
+          <div class="meter-segment contradiction" style="width: ${Math.round(claim.p_contra * 100)}%" title="P_contra: ${(claim.p_contra * 100).toFixed(1)}%"></div>
+        </div>
 
-  try {
-    const res = await fetch("/extract", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note_id: "adhoc", note_text: noteText })
+        <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-family: var(--font-mono); color: var(--text-muted); margin-top: 4px;">
+          <span style="color: #059669;">Entail: ${(claim.p_entail * 100).toFixed(1)}%</span>
+          <span style="color: #d97706;">Neutral: ${(claim.p_neutral * 100).toFixed(1)}%</span>
+          <span style="color: #dc2626;">Contra: ${(claim.p_contra * 100).toFixed(1)}%</span>
+        </div>
+      </div>
+
+      <div class="grounding-sentence-quote" title="Source Grounding Sentence">
+        “${escapeHtml(claim.sentence)}”
+      </div>
+
+      <div style="font-size: 0.72rem; color: ${decision === 'abstain' ? '#991b1b' : '#047857'}; font-weight: 600; margin-top: 8px;">
+        ${escapeHtml(claim.auditReason)}
+      </div>
+    `;
+
+    // Interactive Hover: highlight the corresponding sentence in the EHR Note
+    card.addEventListener("mouseenter", () => {
+      const spanEl = document.getElementById(`span-${claim.id}`);
+      if (spanEl) spanEl.classList.add("active-highlight");
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      state.isLiveServer = true;
-      state.claims = data.claims.map((c, i) => ({
-        id: `live_${i}`,
-        type: c.type,
-        value: c.value,
-        dosage: c.dosage,
-        span_text: c.span_text,
-        token_conf: c.token_conf || 0.95,
-        p_entail: c.p_entail,
-        p_contra: c.p_contra,
-        sentence: c.sentence
-      }));
-    } else {
-      throw new Error(`Server returned status ${res.status}`);
-    }
-  } catch (err) {
-    console.warn("Live API not accessible, utilizing deterministic verification fallback:", err);
-    // Client-side rule parsing simulation for offline UI demonstration
-    simulateOfflineExtraction(noteText);
-  } finally {
-    runBtn.textContent = "Run Verification";
-    runBtn.disabled = false;
-    updateClaimDecisions();
-    renderNoteView();
-    renderClaimsFeed();
-    sync3DNodesWithClaims();
-  }
-}
+    card.addEventListener("mouseleave", () => {
+      const spanEl = document.getElementById(`span-${claim.id}`);
+      if (spanEl) spanEl.classList.remove("active-highlight");
+    });
 
-function simulateOfflineExtraction(text) {
-  const generatedClaims = [];
-  let idCounter = 1;
-
-  text.split("\n").forEach(line => {
-    line = line.trim();
-    if (!line) return;
-
-    // Diagnosis rule check
-    if (/^\d+\.\s+/.test(line)) {
-      const val = line.replace(/^\d+\.\s+/, "").replace(/\.$/, "").trim();
-      const isRuledOut = /ruled out|resolved|unlikely/i.test(val);
-
-      if (isRuledOut) {
-        generatedClaims.push({
-          id: `sim_${idCounter++}`,
-          type: "diagnosis",
-          value: val,
-          dosage: null,
-          span_text: line,
-          token_conf: 0.985,
-          p_entail: 0.091, // NLI verifier contradicts
-          p_contra: 0.881,
-          sentence: line
-        });
-      } else if (!/mg|puff|daily|bid|tid/i.test(val)) {
-        generatedClaims.push({
-          id: `sim_${idCounter++}`,
-          type: "diagnosis",
-          value: val,
-          dosage: null,
-          span_text: line,
-          token_conf: 0.992,
-          p_entail: 0.994,
-          p_contra: 0.002,
-          sentence: line
-        });
-      } else {
-        generatedClaims.push({
-          id: `sim_${idCounter++}`,
-          type: "medication",
-          value: val,
-          dosage: val.match(/\d+.*$/) ? val.match(/\d+.*$/)[0] : null,
-          span_text: line,
-          token_conf: 0.991,
-          p_entail: 0.989,
-          p_contra: 0.003,
-          sentence: line
-        });
-      }
-    } else if (line.startsWith("FOLLOW-UP:")) {
-      const fu = line.replace("FOLLOW-UP:", "").replace(/\.$/, "").trim();
-      generatedClaims.push({
-        id: `sim_${idCounter++}`,
-        type: "followup",
-        value: fu,
-        dosage: null,
-        span_text: line,
-        token_conf: 0.988,
-        p_entail: 0.978,
-        p_contra: 0.005,
-        sentence: line
-      });
-    }
+    container.appendChild(card);
   });
 
-  state.claims = generatedClaims;
+  // Update Status Headline
+  const headlineEl = document.getElementById("veritas-status-headline");
+  if (headlineEl) {
+    if (nBlocked > 0) {
+      headlineEl.textContent = `Protected: ${nBlocked} Hallucination(s) Filtered (${nAccepted} Safe Charted)`;
+    } else {
+      headlineEl.textContent = `All ${nAccepted} Findings Formally Verified`;
+    }
+  }
+
+  const threshHeadline = document.getElementById("veritas-threshold-headline");
+  if (threshHeadline) threshHeadline.textContent = state.threshold.toFixed(2);
 }
 
-// --- 7. Modal Dialogs & Telemetry Viewers -------------------------------------
+function updateTelemetryStats(currentCase) {
+  const total = currentCase.veritasOutputs.length;
+  let nAccept = 0;
+  let nBlocked = 0;
 
-function setupModalListeners() {
-  const modal = document.getElementById("telemetry-modal");
-  const openBtn = document.getElementById("btn-open-telemetry");
-  const closeBtn = document.getElementById("btn-close-modal");
+  currentCase.veritasOutputs.forEach(c => {
+    const score = computeDecisionScore(c);
+    const d = evaluateThreeWayDecision(score, state.threshold, state.lowFrac);
+    if (d === "accept") nAccept++;
+    if (d === "abstain") nBlocked++;
+  });
+
+  const covPct = total > 0 ? Math.round((nAccept / total) * 100) : 0;
+  document.getElementById("stat-coverage-display").textContent = `${covPct}% (${nAccept}/${total} Charted)`;
+}
+
+// --- 4. Scanning Animation Effect --------------------------------------------
+
+function triggerClinicalScanAnimation() {
+  const laser = document.getElementById("audit-scan-laser");
+  const auditBtn = document.getElementById("btn-trigger-audit");
+
+  if (!laser || state.isScanning) return;
+
+  state.isScanning = true;
+  laser.classList.add("scanning");
+  auditBtn.innerHTML = `
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M12 2a10 10 0 0 1 10 10"></path>
+    </svg>
+    Auditing Sentences...
+  `;
+
+  // Staggered sequence that simulates real multi-stage pipeline
+  setTimeout(() => {
+    renderCurrentCase();
+    laser.classList.remove("scanning");
+    state.isScanning = false;
+    auditBtn.innerHTML = `
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="9 11 12 14 22 4"></polyline>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+      </svg>
+      Run Clinical Audit
+    `;
+  }, 1400);
+}
+
+// --- 5. Modal & Setup Lifecycle ----------------------------------------------
+
+function setupEventListeners() {
+  // Preset buttons
+  document.querySelectorAll(".trap-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".trap-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      state.activeKey = btn.getAttribute("data-preset");
+      triggerClinicalScanAnimation();
+    });
+  });
+
+  // Threshold slider
+  const slider = document.getElementById("threshold-range-slider");
+  const badge = document.getElementById("tau-badge-display");
+
+  slider.addEventListener("input", e => {
+    const val = parseFloat(e.target.value);
+    state.threshold = val;
+    badge.textContent = val.toFixed(2);
+    renderCurrentCase();
+  });
+
+  // Audit button
+  const auditBtn = document.getElementById("btn-trigger-audit");
+  if (auditBtn) auditBtn.addEventListener("click", triggerClinicalScanAnimation);
+
+  // Examiner Guide Modal
+  const modal = document.getElementById("examiner-guide-modal");
+  const openBtn = document.getElementById("btn-open-guide");
+  const closeBtn = document.getElementById("btn-close-guide");
 
   if (openBtn && modal) {
     openBtn.addEventListener("click", () => modal.classList.add("active"));
@@ -891,8 +710,6 @@ function setupModalListeners() {
   });
 }
 
-// --- 8. Initialization Lifecycle ---------------------------------------------
-
 function escapeHtml(str) {
   if (!str) return "";
   return str.replace(/&/g, "&amp;")
@@ -903,41 +720,6 @@ function escapeHtml(str) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. Initialize Three.js Manifold
-  initThreeScene();
-
-  // 2. Setup Threshold Scrubber
-  const slider = document.getElementById("tau-slider");
-  const tauDisplay = document.getElementById("tau-val-display");
-
-  slider.addEventListener("input", e => {
-    const val = parseFloat(e.target.value);
-    state.threshold = val;
-    tauDisplay.textContent = val.toFixed(2);
-
-    updateClaimDecisions();
-    renderNoteView();
-    renderClaimsFeed();
-    sync3DNodesWithClaims();
-  });
-
-  // 3. Preset Switcher
-  const presetSelect = document.getElementById("preset-select");
-  presetSelect.addEventListener("change", e => {
-    loadPreset(e.target.value);
-  });
-
-  // 4. Run Verification Button
-  const runBtn = document.getElementById("btn-run-extract");
-  runBtn.addEventListener("click", triggerLiveExtraction);
-
-  // 5. Reset Camera Button
-  const resetCamBtn = document.getElementById("btn-reset-cam");
-  if (resetCamBtn) resetCamBtn.addEventListener("click", resetCameraView);
-
-  // 6. Setup Telemetry Modal
-  setupModalListeners();
-
-  // 7. Initial Load
-  loadPreset(state.activePresetKey);
+  setupEventListeners();
+  renderCurrentCase();
 });
