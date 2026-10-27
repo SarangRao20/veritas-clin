@@ -3,240 +3,488 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Veritas-Clin | Clinical AI Safety & Verification Workstation</title>
+  <title>Veritas-Clin | Clinical AI Safety & Verification Platform</title>
   
-  <!-- Google Fonts: Figtree (Clinical Sans) & JetBrains Mono (Medical Monospace) -->
+  <!-- Google Fonts: Figtree (Geometric Sans) & JetBrains Mono (Medical Monospace) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Favicon -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230284c7'><path d='M12 2v20M2 12h20'/></svg>">
   
-  <!-- Stylesheets -->
+  <!-- Studio Stylesheet -->
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 
-  <!-- Top Hospital Telemetry Header -->
-  <header class="app-header">
-    <div class="brand-group">
-      <div class="hospital-cross-icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Top Global Application Navbar -->
+  <nav class="main-nav">
+    <div class="brand-anchor" onclick="navigateTo('landing')">
+      <div class="brand-icon-box">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2v20M2 12h20"/>
         </svg>
       </div>
-      <div class="brand-text">
-        <h1>VERITAS-CLIN <span style="font-size: 0.72rem; color: #0284c7; font-weight: 600; background: #e0f2fe; padding: 2px 7px; border-radius: 4px;">EHR Safety Guardrail</span></h1>
-        <p>Evidence-Grounded Extraction &bull; Cross-Encoder NLI &bull; Calibrated Selective Prediction</p>
+      <div>
+        <span class="brand-name">VERITAS-CLIN</span>
+        <span class="brand-badge">Clinical AI Safety</span>
       </div>
     </div>
 
-    <div class="header-pills">
-      <div class="pill-badge">
-        <span class="status-dot-pulse"></span>
-        <span>Dual Engine: Qwen2.5-3B + DeBERTa-v3</span>
-      </div>
-      <div class="pill-badge">
-        <span>GPU Benchmark: T4 (582s)</span>
-      </div>
-      <div class="pill-badge" style="color: #059669; background: #d1fae5; border-color: #a7f3d0;">
-        <span>Accepted Precision: 92.9%</span>
-      </div>
-    </div>
+    <ul class="nav-links">
+      <li><a class="nav-link" onclick="navigateTo('landing')">Product Overview</a></li>
+      <li><a class="nav-link" onclick="scrollToSection('section-problems')">Clinical Traps</a></li>
+      <li><a class="nav-link" onclick="scrollToSection('section-architecture')">Architecture</a></li>
+      <li><a class="nav-link" onclick="openGuideModal()">Viva Defense Guide</a></li>
+    </ul>
 
-    <div class="header-actions">
-      <button class="btn-secondary" id="btn-open-guide">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="16" x2="12" y2="12"></line>
-          <line x1="12" y1="8" x2="12.01" y2="8"></line>
-        </svg>
-        Viva Defense Guide
-      </button>
-
-      <a href="https://github.com/SarangRao20/veritas-clin" target="_blank" rel="noopener noreferrer" class="btn-secondary">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-        </svg>
-        GitHub
-      </a>
-
-      <button class="btn-audit" id="btn-trigger-audit">
+    <div class="nav-actions">
+      <button class="btn-ghost" id="nav-btn-auth" onclick="navigateTo('auth')">Physician Login</button>
+      <button class="btn-primary" onclick="navigateTo('input')">
+        <span>Launch Studio</span>
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <polyline points="9 11 12 14 22 4"></polyline>
-          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+          <polyline points="12 5 19 12 12 19"></polyline>
         </svg>
-        Run Clinical Audit
-      </button>
-    </div>
-  </header>
-
-  <!-- One-Click Viva Failure Mode Presets Bar -->
-  <nav class="presets-banner">
-    <div class="presets-label">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-      </svg>
-      <span>VIVA CLINICAL ADVERSARIAL TRAPS (1-CLICK TEST CASES):</span>
-    </div>
-
-    <div class="presets-buttons">
-      <button class="trap-btn active" data-preset="trap_aki_negation">
-        <span>Trap 1: Ruled-Out Condition (Negation Blindness)</span>
-      </button>
-      <button class="trap-btn" data-preset="trap_allergy_prescription">
-        <span>Trap 2: Patient Allergy Misinterpreted as Medication</span>
-      </button>
-      <button class="trap-btn" data-preset="trap_family_history">
-        <span>Trap 3: Family History Misattributed as Diagnosis</span>
-      </button>
-      <button class="trap-btn" data-preset="case_heart_failure">
-        <span>Case 4: Multi-Drug Cardiology Regimen</span>
       </button>
     </div>
   </nav>
 
-  <!-- Main 3-Column Hospital Audit Cockpit -->
-  <main class="audit-workspace">
-
-    <!-- Column 1: Raw EHR Clinical Note -->
-    <section class="audit-col">
-      <div class="col-header col-note">
-        <div class="col-title-group">
-          <div class="col-icon note">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-            </svg>
-          </div>
-          <div>
-            <h2>1. Source Clinical EHR Note</h2>
-            <span style="font-size: 0.74rem; color: var(--text-muted);">Unstructured Physician Discharge Record</span>
-          </div>
-        </div>
-        <span class="col-tag note" id="patient-mrn-badge">MRN: VS-002</span>
+  <!-- =========================================================================
+       VIEW 1: PROFESSIONAL PRODUCT LANDING PAGE
+       ========================================================================= -->
+  <section class="view-container active-view" id="view-landing">
+    
+    <div class="hero-section">
+      <div class="hero-pill">
+        <span class="pulse-green-dot"></span>
+        <span>TESLA T4 BENCHMARKED &bull; 92.9% ACCEPTED CHART PRECISION</span>
       </div>
 
-      <div class="col-content">
-        <div class="ehr-document">
-          <div class="scan-line" id="audit-scan-laser"></div>
-          <div class="ehr-meta-bar">
-            <span>PATIENT: ANONYMIZED ADULT</span>
-            <span>WARD: NEPHROLOGY 4B</span>
-            <span>STATUS: FINAL DISCHARGE</span>
-          </div>
-          <div id="ehr-note-body">
-            <!-- Rendered clinical text with sentence highlight anchors -->
-          </div>
-        </div>
-      </div>
-    </section>
+      <h1 class="hero-headline">
+        The Safety Guardrail Between <br>
+        <span class="gradient-text">Large Language Models</span> and Patient Records.
+      </h1>
 
-    <!-- Column 2: Standard Naive LLM (The Baseline Failure) -->
-    <section class="audit-col">
-      <div class="col-header col-naive">
-        <div class="col-title-group">
-          <div class="col-icon naive">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-          </div>
-          <div>
-            <h2 style="color: #991b1b;">2. Standard LLM Baseline</h2>
-            <span style="font-size: 0.74rem; color: #b91c1c;">Unverified Zero-Shot LLM Output (Prompt-and-Pray)</span>
-          </div>
-        </div>
-        <span class="col-tag naive">UNGUARDED</span>
-      </div>
+      <p class="hero-subtitle">
+        Eliminate dangerous clinical hallucinations before they reach the electronic health record. A dual-stage architecture combining medical LLM extraction with cross-encoder NLI verification and calibrated selective abstention.
+      </p>
 
-      <div class="col-content">
-        <div class="naive-disclaimer">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0; margin-top: 1px;">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-            <line x1="12" y1="9" x2="12" y2="13"></line>
-            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      <div class="hero-cta-group">
+        <button class="btn-primary hero-btn-large" onclick="navigateTo('input')">
+          <span>Start Clinical Audit Workflow</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+            <polyline points="12 5 19 12 12 19"></polyline>
           </svg>
-          <div>
-            <strong>Clinical Danger:</strong> Standard LLMs suffer from <em>negation blindness</em>. They extract ruled-out conditions with high confidence because the keywords appear in the text.
-          </div>
-        </div>
+        </button>
 
-        <div id="naive-claims-list">
-          <!-- Populated dynamically to demonstrate the failure mode -->
+        <button class="btn-secondary hero-btn-large" onclick="openGuideModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Examiner Defense Guide</span>
+        </button>
+      </div>
+
+      <!-- Real Benchmark Telemetry Stat Bar -->
+      <div class="benchmark-stats-bar">
+        <div class="stat-item">
+          <div class="stat-val">92.9% <span class="badge-gain">+7.7%</span></div>
+          <div class="stat-desc">Accepted Chart Precision (vs 85.2% baseline)</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val" style="color: #059669;">56.2%</div>
+          <div class="stat-desc">Planted Hallucinations Caught & Suppressed</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val" style="color: #0284c7;">90.7%</div>
+          <div class="stat-desc">Automated EHR Chart Coverage</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-val" style="color: #7c3aed;">0.1353</div>
+          <div class="stat-desc">Expected Calibration Error (ECE on Test Split)</div>
         </div>
       </div>
-    </section>
+    </div>
 
-    <!-- Column 3: Veritas Safe Clinical Engine (Our Solution) -->
-    <section class="audit-col" style="border-color: #a7f3d0;">
-      <div class="col-header col-veritas">
-        <div class="col-title-group">
-          <div class="col-icon veritas">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    <!-- Clinical Traps Breakdown Section -->
+    <div class="comparison-section" id="section-problems">
+      <div class="section-wrapper">
+        <div class="section-header">
+          <div class="section-tag">THE CLINICAL AI PROBLEM</div>
+          <h2 class="section-title">Where Standard Clinical LLMs Fail</h2>
+          <p style="color: #64748b; font-size: 1rem; max-width: 650px; margin: 10px auto 0;">
+            Prompting an LLM to read clinical notes leads to fatal errors because standard models match vocabulary while ignoring clinical modality.
+          </p>
+        </div>
+
+        <div class="feature-cards-grid">
+          <div class="feature-card">
+            <div class="feature-icon-wrapper" style="background: #fee2e2; color: #dc2626;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+            </div>
+            <h3>1. Negation Blindness</h3>
+            <p>
+              When a physician writes <em>"Community-acquired pneumonia - ruled out"</em>, standard LLMs extract Pneumonia as an active diagnosis with 98% confidence because the words appear in the text.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-wrapper" style="background: #fef3c7; color: #d97706;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+            <h3>2. Allergy Misattribution</h3>
+            <p>
+              Under <em>"Allergies: Penicillin (anaphylaxis)"</em>, uncalibrated AI models misparse the drug token and enter Penicillin onto the discharge medication order list—a fatal hospital error.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-wrapper" style="background: #e0f2fe; color: #0284c7;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <h3>3. Family History Bleed</h3>
+            <p>
+              Phrases like <em>"Father has Type 2 Diabetes"</em> routinely bleed into the patient's own diagnostic problem list, contaminating billing and clinical decision support systems.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Architecture Section -->
+    <div class="comparison-section" id="section-architecture" style="background: #f8fafc; border-top: none;">
+      <div class="section-wrapper">
+        <div class="section-header">
+          <div class="section-tag">ENGINEERING FOUNDATION</div>
+          <h2 class="section-title">The Veritas Dual-Stage Safety Pipeline</h2>
+          <p style="color: #64748b; font-size: 1rem; max-width: 650px; margin: 10px auto 0;">
+            A decoupled architecture separating generative candidate extraction from an orthogonal cross-encoder verification barrier.
+          </p>
+        </div>
+
+        <div style="background: #ffffff; border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 36px; box-shadow: var(--shadow-md);">
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; position: relative;">
+            <div style="padding: 20px; background: #f8fafc; border-radius: var(--radius-md); border-left: 4px solid #0284c7;">
+              <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #0284c7; font-weight: 700;">STAGE 1: GENERATION</span>
+              <h4 style="margin: 6px 0 10px; font-size: 1.05rem;">Qwen2.5-3B Extractor</h4>
+              <p style="font-size: 0.84rem; color: #475569; line-height: 1.6;">
+                Zero-shot instruction-tuned model extracts candidate diagnoses, medications with dosage, and follow-up plans into structured JSON tokens.
+              </p>
+            </div>
+
+            <div style="padding: 20px; background: #f8fafc; border-radius: var(--radius-md); border-left: 4px solid #06b6d4;">
+              <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #06b6d4; font-weight: 700;">STAGE 2: AUDITING</span>
+              <h4 style="margin: 6px 0 10px; font-size: 1.05rem;">DeBERTa-v3 NLI Verifier</h4>
+              <p style="font-size: 0.84rem; color: #475569; line-height: 1.6;">
+                Bidirectional cross-encoder evaluates premise-hypothesis entailment: calculates P_entail, P_neutral, and P_contra against the exact source sentence.
+              </p>
+            </div>
+
+            <div style="padding: 20px; background: #f8fafc; border-radius: var(--radius-md); border-left: 4px solid #059669;">
+              <span style="font-family: var(--font-mono); font-size: 0.72rem; color: #059669; font-weight: 700;">STAGE 3: DECISION</span>
+              <h4 style="margin: 6px 0 10px; font-size: 1.05rem;">Calibrated Abstention</h4>
+              <p style="font-size: 0.84rem; color: #475569; line-height: 1.6;">
+                Applies dev-optimized threshold &tau;* = 0.35. Automatically signs off safe claims, routes ambiguous claims to doctors, and suppresses hallucinations.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- =========================================================================
+       VIEW 2: CLINICAL WORKSTATION AUTHENTICATION
+       ========================================================================= -->
+  <section class="view-container" id="view-auth">
+    <div class="auth-wrapper">
+      <div class="auth-card">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div class="hospital-cross-icon" style="margin: 0 auto 12px; width: 44px; height: 44px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 2v20M2 12h20"/>
             </svg>
           </div>
-          <div>
-            <h2 style="color: #065f46;">3. Veritas-Clin Engine</h2>
-            <span style="font-size: 0.74rem; color: #047857;">NLI Cross-Encoder Verification + Calibrated Abstention</span>
-          </div>
-        </div>
-        <span class="col-tag veritas">SAFEGUARDED</span>
-      </div>
-
-      <div class="col-content">
-        <div class="veritas-summary-banner">
-          <div>
-            <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #047857; text-transform: uppercase; font-weight: 600;">Chart Audit Status:</span>
-            <div style="font-size: 0.95rem; font-weight: 700; color: #065f46;" id="veritas-status-headline">Auditing Findings...</div>
-          </div>
-          <div style="text-align: right;">
-            <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #047857;">Threshold:</span>
-            <div style="font-size: 0.95rem; font-family: var(--font-mono); font-weight: 700; color: #065f46;">&tau;* = <span id="veritas-threshold-headline">0.35</span></div>
-          </div>
+          <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a;">Hospital Clinical Portal</h2>
+          <p style="font-size: 0.82rem; color: #64748b;">Secure Authentication for Attending Staff & Evaluators</p>
         </div>
 
-        <div id="veritas-claims-list">
-          <!-- Populated dynamically with audited claims & stamps -->
+        <div class="auth-tabs">
+          <button class="auth-tab-btn active" id="tab-btn-signin" onclick="switchAuthTab('signin')">Sign In</button>
+          <button class="auth-tab-btn" id="tab-btn-register" onclick="switchAuthTab('register')">Register Staff</button>
         </div>
-      </div>
-    </section>
 
-  </main>
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)">
+          <div class="form-group">
+            <label class="form-label">Medical Staff Email</label>
+            <input type="email" class="form-input" id="auth-email" value="sarang.rao@hospital.org" required>
+          </div>
 
-  <!-- Bottom Safety Controller Deck -->
-  <footer class="safety-deck">
-    <div class="slider-group">
-      <span class="slider-title">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-        </svg>
-        Abstention Cutoff (&tau;*):
-      </span>
-      <input type="range" min="0.10" max="0.95" step="0.01" value="0.35" class="clinical-slider" id="threshold-range-slider">
-      <span class="tau-indicator" id="tau-badge-display">0.35</span>
-    </div>
+          <div class="form-group">
+            <label class="form-label">Access Passcode</label>
+            <input type="password" class="form-input" id="auth-pass" value="••••••••••••" required>
+          </div>
 
-    <div class="safety-telemetry-stats">
-      <div class="telemetry-stat">
-        Chart Automation Coverage: <strong id="stat-coverage-display">90.7%</strong>
-      </div>
-      <div class="telemetry-stat" style="color: #dc2626;">
-        Hallucination Guard: <strong id="stat-guard-display" style="color: #dc2626;">56.2% Caught</strong>
-      </div>
-      <div class="telemetry-stat" style="color: #059669;">
-        Accepted Chart Precision: <strong id="stat-precision-display" style="color: #059669;">92.9% (+7.7%)</strong>
+          <div class="form-group" id="group-role" style="display: none;">
+            <label class="form-label">Hospital Department Role</label>
+            <select class="form-input" id="auth-role">
+              <option value="physician">Attending Physician / Nephrologist</option>
+              <option value="researcher">Clinical NLP Researcher / Viva Examiner</option>
+              <option value="cmo">Chief Medical Information Officer (CMIO)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 11px; margin-top: 8px;">
+            <span id="auth-submit-text">Authenticate & Open Clinical Studio</span>
+          </button>
+        </form>
+
+        <div class="demo-fast-track">
+          <p><strong>Examiner / Viva Fast-Track:</strong></p>
+          <button class="btn-secondary" style="width: 100%; justify-content: center; font-size: 0.78rem;" onclick="fastTrackLogin()">
+            ⚡ 1-Click Examiner Demo Sign-In (Bypass)
+          </button>
+        </div>
       </div>
     </div>
-  </footer>
+  </section>
 
-  <!-- Examiner Defense Guide Modal (Anticipated Viva Questions) -->
+  <!-- =========================================================================
+       VIEW 3: CLINICAL NOTE INPUT WORKSPACE
+       ========================================================================= -->
+  <section class="view-container" id="view-input">
+    <div class="workspace-wrapper">
+      
+      <!-- Patient Encounter Header -->
+      <div class="patient-context-banner">
+        <div class="patient-info-left">
+          <span class="mrn-badge" id="intake-mrn-badge">MRN: VS-002</span>
+          <div>
+            <div style="font-size: 0.92rem; font-weight: 700; color: #0f172a;">Patient: Adult (Anonymized Capstone Case)</div>
+            <div style="font-size: 0.74rem; color: #64748b;">Encounter: Inpatient Nephrology Discharge &bull; Attending: Dr. Sarang Rao</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px;">
+          <button class="btn-secondary" onclick="openGuideModal()">
+            <span>Viva Cheat-Sheet</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Input Card -->
+      <div class="input-container-card">
+        
+        <!-- Trap Selector Bar -->
+        <div class="trap-selector-box">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <strong style="font-size: 0.82rem; color: #0f172a;">Select Case or Planted Adversarial Trap:</strong>
+            <span style="font-size: 0.72rem; font-family: var(--font-mono); color: #0284c7;">1-Click Preloaded Demonstration</span>
+          </div>
+
+          <div class="trap-pill-row">
+            <button class="trap-select-btn active" data-intake-case="trap_aki_negation" onclick="selectIntakeCase('trap_aki_negation')">
+              Trap 1: AKI + "COPD Ruled Out" (Negation Trap)
+            </button>
+            <button class="trap-select-btn" data-intake-case="trap_allergy_prescription" onclick="selectIntakeCase('trap_allergy_prescription')">
+              Trap 2: Penicillin Allergy Misinterpreted as Medication
+            </button>
+            <button class="trap-select-btn" data-intake-case="trap_family_history" onclick="selectIntakeCase('trap_family_history')">
+              Trap 3: Father's Diabetes in Family History
+            </button>
+            <button class="trap-select-btn" data-intake-case="case_heart_failure" onclick="selectIntakeCase('case_heart_failure')">
+              Case 4: Heart Failure Multi-Drug Regimen
+            </button>
+          </div>
+        </div>
+
+        <!-- Clinical Note Editor -->
+        <div>
+          <label style="display: block; font-size: 0.82rem; font-weight: 600; color: #334155; margin-bottom: 6px;">
+            Physician Discharge Summary Text:
+          </label>
+          <textarea class="clinical-textarea-field" id="clinical-note-input"></textarea>
+        </div>
+
+        <!-- Safety Settings & CTA -->
+        <div class="intake-bottom-actions">
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span style="font-size: 0.78rem; font-family: var(--font-mono); color: #64748b;">
+              Calibrated Threshold (&tau;*): <strong>0.35</strong> (Dev Optimal)
+            </span>
+            <span style="font-size: 0.78rem; font-family: var(--font-mono); color: #059669; background: #d1fae5; padding: 2px 8px; border-radius: 4px;">
+              DeBERTa NLI Cross-Encoder: ACTIVE
+            </span>
+          </div>
+
+          <button class="btn-primary" style="padding: 10px 24px; font-size: 0.9rem;" onclick="startProcessingFlow()">
+            <span>Proceed to Clinical Verification Audit</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       VIEW 4: PROCESSING FLOW (ANIMATED STEPPER)
+       ========================================================================= -->
+  <section class="view-container" id="view-processing">
+    <div class="processing-screen">
+      <div class="processing-card">
+        <div class="pulse-radar-loader">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07l14.14-14.14"/>
+          </svg>
+        </div>
+
+        <h2 style="font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 6px;">
+          Auditing Clinical Document
+        </h2>
+        <p style="font-size: 0.84rem; color: #64748b;">Executing Dual-Stage Extraction & Cross-Encoder Verification</p>
+
+        <div class="stepper-list">
+          <div class="stepper-item completed" id="step-1">
+            <div class="step-icon-circle">✓</div>
+            <span>1. Sentence Segmentation & EHR Syntax Decomposition</span>
+          </div>
+          <div class="stepper-item active" id="step-2">
+            <div class="step-icon-circle">&bull;</div>
+            <span>2. Zero-Shot Candidate Entity Extraction (Qwen2.5-3B)</span>
+          </div>
+          <div class="stepper-item" id="step-3">
+            <div class="step-icon-circle">3</div>
+            <span>3. Cross-Encoder NLI Entailment & Contradiction Audit (DeBERTa-v3)</span>
+          </div>
+          <div class="stepper-item" id="step-4">
+            <div class="step-icon-circle">4</div>
+            <span>4. Selective Calibrated Abstention Routing (&tau;* = 0.35)</span>
+          </div>
+        </div>
+
+        <div style="background: #0f172a; color: #38bdf8; font-family: var(--font-mono); font-size: 0.74rem; text-align: left; padding: 12px; border-radius: 6px; min-height: 50px;" id="processing-telemetry-log">
+          [System] Initializing DeBERTa-v3 cross-encoder audit pipeline...
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       VIEW 5: FINAL OUTPUT CLINICAL CHART REPORT
+       ========================================================================= -->
+  <section class="view-container" id="view-output">
+    <div class="report-wrapper">
+      
+      <!-- Top Report Banner -->
+      <div class="report-header-banner">
+        <div>
+          <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #059669; font-weight: 700; background: #d1fae5; padding: 3px 8px; border-radius: 4px;">
+            AUDIT COMPLETED &bull; VERIFIED SAFE
+          </span>
+          <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-top: 6px;" id="output-report-headline">
+            Discharge Problem & Medication List
+          </h2>
+          <div style="font-size: 0.78rem; color: #64748b;" id="output-report-subhead">
+            MRN: VS-002 &bull; Verification Model: DeBERTa-v3 NLI &bull; Threshold &tau;*: 0.35
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button class="btn-secondary" onclick="navigateTo('input')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            <span>Audit Another Record</span>
+          </button>
+
+          <button class="btn-primary" onclick="exportFHIRBundle()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span>Export FHIR Resource (JSON)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Comparison Report Grid (Verified Safe Chart vs Suppressed Hallucinations) -->
+      <div class="report-grid-columns">
+        
+        <!-- Approved Findings (Entered to Chart) -->
+        <div class="report-box" style="border-top: 4px solid var(--safe-green);">
+          <div class="box-title-row">
+            <h3 style="color: #065f46;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              Approved Clinical Entries (Entered Into Patient EHR)
+            </h3>
+            <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #059669; font-weight: 700;" id="report-approved-count">
+              3 SAFE ENTRIES
+            </span>
+          </div>
+
+          <div id="report-approved-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Suppressed Hallucinations & Blocked Traps -->
+        <div class="report-box" style="border-top: 4px solid var(--blocked-red);">
+          <div class="box-title-row">
+            <h3 style="color: #991b1b;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+              </svg>
+              Blocked Hallucinations & Contraindicated Traps
+            </h3>
+            <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #dc2626; font-weight: 700;" id="report-blocked-count">
+              1 ERROR SUPPRESSED
+            </span>
+          </div>
+
+          <div id="report-blocked-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       EXAMINER VIVA DEFENSE GUIDE MODAL
+       ========================================================================= -->
   <div class="guide-modal" id="examiner-guide-modal">
     <div class="guide-card">
       <div class="guide-header">
@@ -246,7 +494,7 @@
           </svg>
           Examiner Viva Defense Guide & GPU Telemetry
         </h3>
-        <button class="btn-secondary" style="background: transparent; color: #ffffff; border-color: #334155;" id="btn-close-guide">✕ Close</button>
+        <button class="btn-secondary" style="background: transparent; color: #ffffff; border-color: #334155;" onclick="closeGuideModal()">✕ Close</button>
       </div>
 
       <div class="guide-body">
@@ -289,7 +537,7 @@
     </div>
   </div>
 
-  <!-- Studio Scripts -->
+  <!-- Application Logic -->
   <script src="/app.js"></script>
 </body>
 </html>

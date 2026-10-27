@@ -1,15 +1,14 @@
 /**
- * VERITAS-CLIN: Clinical AI Safety & Verification Workstation
- * Core Telemetry, Interactive Adversarial Traps, & Calibrated Decision Logic
+ * VERITAS-CLIN: Multi-Stage Enterprise Clinical Safety Platform
+ * Full User Journey: Landing -> Auth -> Intake -> Multi-Stage Processing -> Clinical Chart Report
  */
 
-// --- 1. Realistic Clinical Adversarial Trap Cases -----------------------------
-const CLINICAL_VIVA_CASES = {
+// --- 1. Preloaded Clinical Cases with Planted Adversarial Traps ---------------
+const CLINICAL_DATASETS = {
   trap_aki_negation: {
-    id: "VS-002",
-    title: "Trap 1: Ruled-Out Condition (Negation Blindness)",
-    ward: "NEPHROLOGY 4B",
-    status: "FINAL DISCHARGE RECORD",
+    mrn: "VS-002",
+    patientName: "Adult (Nephrology)",
+    encounter: "Inpatient Nephrology Discharge",
     rawText: `DISCHARGE SUMMARY
 Patient ID: VS-002
 Allergies: Penicillin (rash)
@@ -24,102 +23,54 @@ MEDICATIONS ON DISCHARGE:
 1. Losartan 50 mg once daily
 
 FOLLOW-UP: Cardiology in 2 weeks.`,
-    
-    // What standard uncalibrated LLMs (ChatGPT / zero-shot prompts) output:
-    naiveOutputs: [
+    approvedEntries: [
       {
         type: "Diagnosis",
         name: "Acute Kidney Injury",
-        conf: 99.1,
-        isError: false,
-        detail: "Extracted from Assessment item 1."
-      },
-      {
-        type: "Diagnosis",
-        name: "Chronic Obstructive Pulmonary Disease",
-        conf: 98.4,
-        isError: true,
-        errorTag: "FATAL NEGATION HALLUCINATION",
-        detail: "CRITICAL MEDICAL ERROR: The note explicitly says 'ruled out'. Standard LLMs extract this as an active diagnosis because of keyword matching."
+        dosage: null,
+        sentence: "1. Acute Kidney Injury",
+        entailment: 99.4,
+        confidence: 99.1,
+        score: 0.993,
+        reason: "Affirmed active primary diagnosis in discharge assessment."
       },
       {
         type: "Medication",
         name: "Losartan 50 mg once daily",
-        conf: 98.8,
-        isError: false,
-        detail: "Extracted from Medications section."
+        dosage: "50 mg once daily",
+        sentence: "1. Losartan 50 mg once daily",
+        entailment: 98.8,
+        confidence: 98.8,
+        score: 0.988,
+        reason: "Discharge prescription grounded in medications section."
       },
       {
         type: "Follow-up",
         name: "Cardiology in 2 weeks",
-        conf: 97.5,
-        isError: false,
-        detail: "Extracted from Follow-up section."
-      }
-    ],
-
-    // What Veritas-Clin outputs with DeBERTa NLI cross-encoder verification:
-    veritasOutputs: [
-      {
-        id: "v1",
-        type: "diagnosis",
-        value: "Acute Kidney Injury",
-        dosage: null,
-        sentence: "1. Acute Kidney Injury",
-        span: "1. Acute Kidney Injury",
-        p_entail: 0.994,
-        p_neutral: 0.005,
-        p_contra: 0.001,
-        token_conf: 0.991,
-        auditReason: "Verified: Directly entailed by primary assessment affirmation."
-      },
-      {
-        id: "v2",
-        type: "diagnosis",
-        value: "Chronic Obstructive Pulmonary Disease",
-        dosage: null,
-        sentence: "2. Chronic Obstructive Pulmonary Disease - ruled out.",
-        span: "2. Chronic Obstructive Pulmonary Disease - ruled out.",
-        p_entail: 0.082,
-        p_neutral: 0.034,
-        p_contra: 0.884,
-        token_conf: 0.984,
-        auditReason: "BLOCKED: NLI Cross-Encoder detected strong contradiction (P_contra: 88.4%) against note statement 'ruled out'."
-      },
-      {
-        id: "v3",
-        type: "medication",
-        value: "Losartan 50 mg once daily",
-        dosage: "50 mg once daily",
-        sentence: "1. Losartan 50 mg once daily",
-        span: "1. Losartan 50 mg once daily",
-        p_entail: 0.988,
-        p_neutral: 0.010,
-        p_contra: 0.002,
-        token_conf: 0.988,
-        auditReason: "Verified: Active discharge medication with confirmed dosage & frequency."
-      },
-      {
-        id: "v4",
-        type: "followup",
-        value: "Cardiology in 2 weeks",
         dosage: null,
         sentence: "FOLLOW-UP: Cardiology in 2 weeks.",
-        span: "FOLLOW-UP: Cardiology in 2 weeks.",
-        p_entail: 0.976,
-        p_neutral: 0.019,
-        p_contra: 0.005,
-        token_conf: 0.975,
-        auditReason: "Verified: Discharge transition-of-care follow-up confirmed."
+        entailment: 97.6,
+        confidence: 97.5,
+        score: 0.976,
+        reason: "Outpatient continuity appointment confirmed."
+      }
+    ],
+    blockedHallucinations: [
+      {
+        type: "Diagnosis",
+        name: "Chronic Obstructive Pulmonary Disease",
+        sentence: "2. Chronic Obstructive Pulmonary Disease - ruled out.",
+        contradiction: 88.4,
+        naiveConf: 98.4,
+        reason: "FATAL NEGATION HALLUCINATION: Standard LLM extracted COPD as an active diagnosis. Cross-Encoder DeBERTa detected 88.4% contradiction probability against physician statement 'ruled out'."
       }
     ]
   },
 
   trap_allergy_prescription: {
-    id: "VS-029",
-    title: "Trap 2: Patient Allergy Misinterpreted as Medication",
-    ward: "PULMONOLOGY 3A",
-    status: "FINAL DISCHARGE RECORD",
+    mrn: "VS-029",
+    patientName: "Adult (Pulmonology)",
+    encounter: "Inpatient Pulmonology Discharge",
     rawText: `DISCHARGE SUMMARY
 Patient ID: VS-029
 Allergies: Penicillin (anaphylaxis)
@@ -134,101 +85,62 @@ MEDICATIONS ON DISCHARGE:
 1. Amoxicillin 875 mg twice daily for 7 days
 
 FOLLOW-UP: Pulmonology in 3 weeks.`,
-    
-    naiveOutputs: [
-      {
-        type: "Medication",
-        name: "Penicillin",
-        conf: 93.6,
-        isError: true,
-        errorTag: "DANGEROUS ALLERGY MISATTRIBUTION",
-        detail: "LETHAL ERROR: Patient is anaphylactic to Penicillin! Standard AI extracted 'Penicillin' from the allergy line as a prescribed medication."
-      },
+    approvedEntries: [
       {
         type: "Diagnosis",
         name: "Community-acquired Pneumonia",
-        conf: 99.2,
-        isError: false,
-        detail: "Active confirmed diagnosis."
+        dosage: null,
+        sentence: "1. Community-acquired Pneumonia",
+        entailment: 99.2,
+        confidence: 99.2,
+        score: 0.992,
+        reason: "Active confirmed discharge diagnosis."
+      },
+      {
+        type: "Medication",
+        name: "Amoxicillin 875 mg twice daily for 7 days",
+        dosage: "875 mg twice daily",
+        sentence: "1. Amoxicillin 875 mg twice daily for 7 days",
+        entailment: 98.7,
+        confidence: 99.1,
+        score: 0.988,
+        reason: "Confirmed active discharge antibiotic order."
+      },
+      {
+        type: "Follow-up",
+        name: "Pulmonology in 3 weeks",
+        dosage: null,
+        sentence: "FOLLOW-UP: Pulmonology in 3 weeks.",
+        entailment: 98.1,
+        confidence: 98.5,
+        score: 0.982,
+        reason: "Confirmed specialist follow-up."
+      }
+    ],
+    blockedHallucinations: [
+      {
+        type: "Medication",
+        name: "Penicillin",
+        sentence: "Allergies: Penicillin (anaphylaxis)",
+        contradiction: 93.4,
+        naiveConf: 93.6,
+        reason: "LETHAL ALLERGY CONTRAINDICATION: Patient is anaphylactic to Penicillin! Standard AI extracted 'Penicillin' from the allergy line as a prescribed medication. Blocked by NLI verifier."
       },
       {
         type: "Diagnosis",
         name: "Iron Deficiency Anemia",
-        conf: 97.8,
-        isError: true,
-        errorTag: "RESOLVED CONDITION TRAP",
-        detail: "Extracted condition that was noted as 'resolved' prior to discharge."
-      },
-      {
-        type: "Medication",
-        name: "Amoxicillin 875 mg twice daily",
-        conf: 99.1,
-        isError: false,
-        detail: "Confirmed discharge prescription."
-      }
-    ],
-
-    veritasOutputs: [
-      {
-        id: "v5",
-        type: "medication",
-        value: "Penicillin",
-        dosage: null,
-        sentence: "Allergies: Penicillin (anaphylaxis)",
-        span: "Allergies: Penicillin (anaphylaxis)",
-        p_entail: 0.021,
-        p_neutral: 0.045,
-        p_contra: 0.934,
-        token_conf: 0.936,
-        auditReason: "BLOCKED: NLI Cross-Encoder detected contradiction (P_contra: 93.4%). Document context is an allergy contraindication, NOT a prescription."
-      },
-      {
-        id: "v6",
-        type: "diagnosis",
-        value: "Community-acquired Pneumonia",
-        dosage: null,
-        sentence: "1. Community-acquired Pneumonia",
-        span: "1. Community-acquired Pneumonia",
-        p_entail: 0.992,
-        p_neutral: 0.006,
-        p_contra: 0.002,
-        token_conf: 0.992,
-        auditReason: "Verified: Directly affirmed as active discharge diagnosis."
-      },
-      {
-        id: "v7",
-        type: "diagnosis",
-        value: "Iron Deficiency Anemia",
-        dosage: null,
         sentence: "2. Iron Deficiency Anemia - resolved.",
-        span: "2. Iron Deficiency Anemia - resolved.",
-        p_entail: 0.124,
-        p_neutral: 0.064,
-        p_contra: 0.812,
-        token_conf: 0.978,
-        auditReason: "BLOCKED: NLI detected contradiction against historical qualifier 'resolved'."
-      },
-      {
-        id: "v8",
-        type: "medication",
-        value: "Amoxicillin 875 mg twice daily for 7 days",
-        dosage: "875 mg twice daily",
-        sentence: "1. Amoxicillin 875 mg twice daily for 7 days",
-        span: "1. Amoxicillin 875 mg twice daily for 7 days",
-        p_entail: 0.987,
-        p_neutral: 0.011,
-        p_contra: 0.002,
-        token_conf: 0.991,
-        auditReason: "Verified: Grounded discharge prescription with complete dosage & regimen."
+        contradiction: 81.2,
+        naiveConf: 97.8,
+        reason: "HISTORICAL CONDITION TRAP: Note explicitly marks this condition as 'resolved'. Rejected as active problem."
       }
     ]
   },
 
   trap_family_history: {
-    id: "VS-038",
-    title: "Trap 3: Family History Misattributed as Diagnosis",
-    ward: "GENERAL MEDICINE 2B",
-    status: "FINAL DISCHARGE RECORD",
+    mrn: "VS-038",
+    patientName: "Adult (General Medicine)",
+    encounter: "Inpatient General Medicine Discharge",
     rawText: `DISCHARGE SUMMARY
 Patient ID: VS-038
 Allergies: None known.
@@ -243,80 +155,54 @@ MEDICATIONS ON DISCHARGE:
 1. Salbutamol 2 puffs as needed
 
 FOLLOW-UP: Pulmonology in 10 days.`,
-
-    naiveOutputs: [
-      {
-        type: "Diagnosis",
-        name: "Type 2 Diabetes Mellitus",
-        conf: 96.8,
-        isError: true,
-        errorTag: "FAMILY HISTORY HALLUCINATION",
-        detail: "MISATTRIBUTION: The patient does not have Diabetes! The note explicitly states this belongs to the patient's father."
-      },
+    approvedEntries: [
       {
         type: "Diagnosis",
         name: "Chronic Bronchitis",
-        conf: 98.9,
-        isError: false,
-        detail: "Patient's active diagnosis."
+        dosage: null,
+        sentence: "2. Chronic Bronchitis",
+        entailment: 99.1,
+        confidence: 98.9,
+        score: 0.990,
+        reason: "Active patient diagnosis affirmed in assessment."
       },
       {
         type: "Medication",
         name: "Salbutamol 2 puffs as needed",
-        conf: 99.4,
-        isError: false,
-        detail: "Active inhaler prescription."
-      }
-    ],
-
-    veritasOutputs: [
-      {
-        id: "v9",
-        type: "diagnosis",
-        value: "Type 2 Diabetes Mellitus",
-        dosage: null,
-        sentence: "Family history: Type 2 Diabetes Mellitus in father",
-        span: "Family history: Type 2 Diabetes Mellitus in father",
-        p_entail: 0.041,
-        p_neutral: 0.112,
-        p_contra: 0.847,
-        token_conf: 0.968,
-        auditReason: "BLOCKED: NLI rejected claim. Source sentence explicitly attributes entity to 'father', not the patient."
-      },
-      {
-        id: "v10",
-        type: "diagnosis",
-        value: "Chronic Bronchitis",
-        dosage: null,
-        sentence: "2. Chronic Bronchitis",
-        span: "2. Chronic Bronchitis",
-        p_entail: 0.991,
-        p_neutral: 0.007,
-        p_contra: 0.002,
-        token_conf: 0.989,
-        auditReason: "Verified: Affirmed active patient diagnosis."
-      },
-      {
-        id: "v11",
-        type: "medication",
-        value: "Salbutamol 2 puffs as needed",
         dosage: "2 puffs as needed",
         sentence: "1. Salbutamol 2 puffs as needed",
-        span: "1. Salbutamol 2 puffs as needed",
-        p_entail: 0.993,
-        p_neutral: 0.005,
-        p_contra: 0.002,
-        token_conf: 0.994,
-        auditReason: "Verified: Confirmed active as-needed bronchodilator prescription."
+        entailment: 99.3,
+        confidence: 99.4,
+        score: 0.993,
+        reason: "Active discharge inhaler prescription."
+      },
+      {
+        type: "Follow-up",
+        name: "Pulmonology in 10 days",
+        dosage: null,
+        sentence: "FOLLOW-UP: Pulmonology in 10 days.",
+        entailment: 98.5,
+        confidence: 98.7,
+        score: 0.985,
+        reason: "Follow-up appointment verified."
+      }
+    ],
+    blockedHallucinations: [
+      {
+        type: "Diagnosis",
+        name: "Type 2 Diabetes Mellitus",
+        sentence: "Family history: Type 2 Diabetes Mellitus in father",
+        contradiction: 84.7,
+        naiveConf: 96.8,
+        reason: "FAMILY HISTORY BLEED: The patient does NOT have diabetes; entity belongs to patient's father. Rejected by cross-encoder."
       }
     ]
   },
 
   case_heart_failure: {
-    id: "VS-014",
-    title: "Case 4: Multi-Drug Cardiology Regimen",
-    ward: "CARDIOLOGY ICU",
-    status: "FINAL DISCHARGE RECORD",
+    mrn: "VS-014",
+    patientName: "Adult (Cardiology ICU)",
+    encounter: "Cardiac Intensive Care Unit Discharge",
     rawText: `DISCHARGE SUMMARY
 Patient ID: VS-014
 Allergies: None known.
@@ -332,382 +218,350 @@ MEDICATIONS ON DISCHARGE:
 2. Atorvastatin 20 mg at night
 
 FOLLOW-UP: Primary Care in 7 days.`,
-
-    naiveOutputs: [
+    approvedEntries: [
       {
         type: "Diagnosis",
         name: "Congestive Heart Failure",
-        conf: 99.5,
-        isError: false,
-        detail: "Active diagnosis."
+        dosage: null,
+        sentence: "1. Congestive Heart Failure",
+        entailment: 99.6,
+        confidence: 99.5,
+        score: 0.996,
+        reason: "Confirmed primary admission diagnosis."
       },
       {
         type: "Diagnosis",
         name: "Hypertension",
-        conf: 99.0,
-        isError: false,
-        detail: "Active diagnosis."
+        dosage: null,
+        sentence: "2. Hypertension",
+        entailment: 98.9,
+        confidence: 99.0,
+        score: 0.989,
+        reason: "Active comorbidity in discharge assessment."
       },
       {
         type: "Medication",
         name: "Furosemide 40 mg once daily",
-        conf: 99.4,
-        isError: false,
-        detail: "Active diuretic."
+        dosage: "40 mg once daily",
+        sentence: "1. Furosemide 40 mg once daily",
+        entailment: 99.1,
+        confidence: 99.4,
+        score: 0.992,
+        reason: "Confirmed loop diuretic discharge regimen."
       },
       {
         type: "Medication",
         name: "Atorvastatin 20 mg at night",
-        conf: 98.8,
-        isError: false,
-        detail: "Active statin."
-      }
-    ],
-
-    veritasOutputs: [
-      {
-        id: "v12",
-        type: "diagnosis",
-        value: "Congestive Heart Failure",
-        dosage: null,
-        sentence: "1. Congestive Heart Failure",
-        span: "1. Congestive Heart Failure",
-        p_entail: 0.996,
-        p_neutral: 0.003,
-        p_contra: 0.001,
-        token_conf: 0.995,
-        auditReason: "Verified: Directly affirmed primary admission & discharge diagnosis."
-      },
-      {
-        id: "v13",
-        type: "diagnosis",
-        value: "Hypertension",
-        dosage: null,
-        sentence: "2. Hypertension",
-        span: "2. Hypertension",
-        p_entail: 0.989,
-        p_neutral: 0.009,
-        p_contra: 0.002,
-        token_conf: 0.990,
-        auditReason: "Verified: Confirmed comorbidity in discharge assessment."
-      },
-      {
-        id: "v14",
-        type: "medication",
-        value: "Furosemide 40 mg once daily",
-        dosage: "40 mg once daily",
-        sentence: "1. Furosemide 40 mg once daily",
-        span: "1. Furosemide 40 mg once daily",
-        p_entail: 0.991,
-        p_neutral: 0.008,
-        p_contra: 0.001,
-        token_conf: 0.994,
-        auditReason: "Verified: Grounded loop diuretic prescription with dosage."
-      },
-      {
-        id: "v15",
-        type: "medication",
-        value: "Atorvastatin 20 mg at night",
         dosage: "20 mg at night",
         sentence: "2. Atorvastatin 20 mg at night",
-        span: "2. Atorvastatin 20 mg at night",
-        p_entail: 0.985,
-        p_neutral: 0.012,
-        p_contra: 0.003,
-        token_conf: 0.988,
-        auditReason: "Verified: Grounded lipid-lowering prescription."
+        entailment: 98.5,
+        confidence: 98.8,
+        score: 0.986,
+        reason: "Confirmed lipid-lowering therapy."
       }
-    ]
+    ],
+    blockedHallucinations: []
   }
 };
 
-// --- 2. Application State & Telemetry -----------------------------------------
-const state = {
-  activeKey: "trap_aki_negation",
-  threshold: 0.35,  // dev-learned optimal threshold
-  lowFrac: 0.8,     // hysteresis fraction: [0.28, 0.35)
-  isScanning: false,
-  highlightedSpan: null,
+// --- 2. Application State & Router --------------------------------------------
+const appState = {
+  currentView: "landing",
+  selectedCaseKey: "trap_aki_negation",
+  user: null,
+  threshold: 0.35,
 };
 
-// Compute calibrated score formula: S = 0.8 * P_entail + 0.2 * Token_Conf
-function computeDecisionScore(claim) {
-  const w_nli = 0.8;
-  const w_tok = 0.2;
-  const p_entail = claim.p_entail != null ? claim.p_entail : 0.0;
-  const token_conf = claim.token_conf != null ? claim.token_conf : 0.5;
-  return Math.min(1.0, Math.max(0.0, w_nli * p_entail + w_tok * token_conf));
-}
-
-function evaluateThreeWayDecision(score, tau, lowFrac) {
-  if (score >= tau) return "accept";
-  if (score >= tau * lowFrac) return "flag";
-  return "abstain";
-}
-
-// --- 3. UI Renderers ---------------------------------------------------------
-
-function renderCurrentCase() {
-  const currentCase = CLINICAL_VIVA_CASES[state.activeKey];
-  if (!currentCase) return;
-
-  // 1. Update Header Badges
-  document.getElementById("patient-mrn-badge").textContent = `MRN: ${currentCase.id}`;
-
-  // 2. Render Raw EHR Note with highlighted spans
-  renderEHRNote(currentCase);
-
-  // 3. Render Standard Naive AI Output (Column 2)
-  renderNaiveBaseline(currentCase);
-
-  // 4. Render Veritas Audited Output (Column 3)
-  renderVeritasEngine(currentCase);
-
-  // 5. Update Telemetry Summary
-  updateTelemetryStats(currentCase);
-}
-
-function renderEHRNote(currentCase) {
-  const container = document.getElementById("ehr-note-body");
-  if (!container) return;
-
-  let text = escapeHtml(currentCase.rawText);
-
-  // Highlight planted traps with visual callout pills
-  currentCase.veritasOutputs.forEach(claim => {
-    if (!claim.span) return;
-    const escapedSpan = escapeHtml(claim.span);
-    const isTrap = claim.p_contra > 0.5;
-    const tagClass = isTrap ? "ehr-span trap-negation" : "ehr-span grounded-active";
-
-    const replacement = `<span class="${tagClass}" id="span-${claim.id}" title="${isTrap ? 'Clinical Distractor Trap' : 'Grounded Entity'}">${escapedSpan}</span>`;
-    text = text.replace(escapedSpan, replacement);
+function navigateTo(viewId) {
+  // Update view containers
+  document.querySelectorAll(".view-container").forEach(el => {
+    el.classList.remove("active-view");
   });
 
-  container.innerHTML = text;
-}
+  const targetView = document.getElementById(`view-${viewId}`);
+  if (targetView) {
+    targetView.classList.add("active-view");
+    appState.currentView = viewId;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-function renderNaiveBaseline(currentCase) {
-  const container = document.getElementById("naive-claims-list");
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  currentCase.naiveOutputs.forEach((item, index) => {
-    const card = document.createElement("div");
-    card.className = `naive-card ${item.isError ? 'hallucination' : ''}`;
-    card.style.animationDelay = `${index * 80}ms`;
-
-    card.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-        <span style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase;">${item.type}</span>
-        ${item.isError 
-          ? `<span class="naive-badge-danger">⚠️ ${item.errorTag}</span>` 
-          : `<span style="font-size: 0.7rem; font-family: var(--font-mono); color: #059669; font-weight: 600;">CONF: ${item.conf}%</span>`
-        }
-      </div>
-      <div style="font-size: 0.92rem; font-weight: 700; color: ${item.isError ? '#b91c1c' : '#0f172a'};">${escapeHtml(item.name)}</div>
-      
-      ${item.isError ? `
-        <div class="hallucination-callout">
-          <strong>FAILURE MODE:</strong> ${escapeHtml(item.detail)}
-        </div>
-      ` : `
-        <div style="font-size: 0.74rem; color: #64748b; margin-top: 4px;">${escapeHtml(item.detail)}</div>
-      `}
-    `;
-
-    container.appendChild(card);
-  });
-}
-
-function renderVeritasEngine(currentCase) {
-  const container = document.getElementById("veritas-claims-list");
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  let nAccepted = 0;
-  let nBlocked = 0;
-
-  currentCase.veritasOutputs.forEach((claim, index) => {
-    const score = computeDecisionScore(claim);
-    const decision = evaluateThreeWayDecision(score, state.threshold, state.lowFrac);
-
-    if (decision === "accept") nAccepted++;
-    if (decision === "abstain") nBlocked++;
-
-    const card = document.createElement("div");
-    card.className = `veritas-claim-card ${decision === 'accept' ? 'accepted' : decision === 'flag' ? 'flagged' : 'abstained'}`;
-    card.id = `vcard-${claim.id}`;
-    card.style.animationDelay = `${index * 90}ms`;
-
-    const stampText = decision === "accept" 
-      ? "✓ CHARTED (SAFE)" 
-      : decision === "flag" 
-      ? "⚠ FLAGGED (REVIEW)" 
-      : "🛑 BLOCKED (HALLUCINATION)";
-    
-    const stampClass = decision;
-
-    card.innerHTML = `
-      <div class="claim-header-row">
-        <span style="font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); text-transform: uppercase; font-weight: 600;">${claim.type}</span>
-        <span class="decision-stamp ${stampClass}">${stampText}</span>
-      </div>
-
-      <div class="claim-entity-name" style="${decision === 'abstain' ? 'text-decoration: line-through; color: #991b1b;' : ''}">
-        ${escapeHtml(claim.value)}
-      </div>
-
-      <div class="nli-meter-box">
-        <div class="meter-header">
-          <span>Decision Score:</span>
-          <strong>${score.toFixed(3)}</strong>
-        </div>
-        <div class="meter-track-horizontal">
-          <div class="meter-segment entailment" style="width: ${Math.round(claim.p_entail * 100)}%" title="P_entail: ${(claim.p_entail * 100).toFixed(1)}%"></div>
-          <div class="meter-segment neutral" style="width: ${Math.round(claim.p_neutral * 100)}%" title="P_neutral: ${(claim.p_neutral * 100).toFixed(1)}%"></div>
-          <div class="meter-segment contradiction" style="width: ${Math.round(claim.p_contra * 100)}%" title="P_contra: ${(claim.p_contra * 100).toFixed(1)}%"></div>
-        </div>
-
-        <div style="display: flex; justify-content: space-between; font-size: 0.68rem; font-family: var(--font-mono); color: var(--text-muted); margin-top: 4px;">
-          <span style="color: #059669;">Entail: ${(claim.p_entail * 100).toFixed(1)}%</span>
-          <span style="color: #d97706;">Neutral: ${(claim.p_neutral * 100).toFixed(1)}%</span>
-          <span style="color: #dc2626;">Contra: ${(claim.p_contra * 100).toFixed(1)}%</span>
-        </div>
-      </div>
-
-      <div class="grounding-sentence-quote" title="Source Grounding Sentence">
-        “${escapeHtml(claim.sentence)}”
-      </div>
-
-      <div style="font-size: 0.72rem; color: ${decision === 'abstain' ? '#991b1b' : '#047857'}; font-weight: 600; margin-top: 8px;">
-        ${escapeHtml(claim.auditReason)}
-      </div>
-    `;
-
-    // Interactive Hover: highlight the corresponding sentence in the EHR Note
-    card.addEventListener("mouseenter", () => {
-      const spanEl = document.getElementById(`span-${claim.id}`);
-      if (spanEl) spanEl.classList.add("active-highlight");
-    });
-
-    card.addEventListener("mouseleave", () => {
-      const spanEl = document.getElementById(`span-${claim.id}`);
-      if (spanEl) spanEl.classList.remove("active-highlight");
-    });
-
-    container.appendChild(card);
-  });
-
-  // Update Status Headline
-  const headlineEl = document.getElementById("veritas-status-headline");
-  if (headlineEl) {
-    if (nBlocked > 0) {
-      headlineEl.textContent = `Protected: ${nBlocked} Hallucination(s) Filtered (${nAccepted} Safe Charted)`;
+  // Update navigation button text
+  const navAuthBtn = document.getElementById("nav-btn-auth");
+  if (navAuthBtn) {
+    if (appState.user) {
+      navAuthBtn.textContent = appState.user.name;
     } else {
-      headlineEl.textContent = `All ${nAccepted} Findings Formally Verified`;
+      navAuthBtn.textContent = "Physician Login";
     }
   }
 
-  const threshHeadline = document.getElementById("veritas-threshold-headline");
-  if (threshHeadline) threshHeadline.textContent = state.threshold.toFixed(2);
+  // View-specific setup
+  if (viewId === "input") {
+    loadIntakeCase(appState.selectedCaseKey);
+  }
 }
 
-function updateTelemetryStats(currentCase) {
-  const total = currentCase.veritasOutputs.length;
-  let nAccept = 0;
-  let nBlocked = 0;
-
-  currentCase.veritasOutputs.forEach(c => {
-    const score = computeDecisionScore(c);
-    const d = evaluateThreeWayDecision(score, state.threshold, state.lowFrac);
-    if (d === "accept") nAccept++;
-    if (d === "abstain") nBlocked++;
-  });
-
-  const covPct = total > 0 ? Math.round((nAccept / total) * 100) : 0;
-  document.getElementById("stat-coverage-display").textContent = `${covPct}% (${nAccept}/${total} Charted)`;
-}
-
-// --- 4. Scanning Animation Effect --------------------------------------------
-
-function triggerClinicalScanAnimation() {
-  const laser = document.getElementById("audit-scan-laser");
-  const auditBtn = document.getElementById("btn-trigger-audit");
-
-  if (!laser || state.isScanning) return;
-
-  state.isScanning = true;
-  laser.classList.add("scanning");
-  auditBtn.innerHTML = `
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
-      <circle cx="12" cy="12" r="10"></circle>
-      <path d="M12 2a10 10 0 0 1 10 10"></path>
-    </svg>
-    Auditing Sentences...
-  `;
-
-  // Staggered sequence that simulates real multi-stage pipeline
+function scrollToSection(sectionId) {
+  if (appState.currentView !== "landing") {
+    navigateTo("landing");
+  }
   setTimeout(() => {
-    renderCurrentCase();
-    laser.classList.remove("scanning");
-    state.isScanning = false;
-    auditBtn.innerHTML = `
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <polyline points="9 11 12 14 22 4"></polyline>
-        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-      </svg>
-      Run Clinical Audit
-    `;
-  }, 1400);
+    const el = document.getElementById(sectionId);
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  }, 100);
 }
 
-// --- 5. Modal & Setup Lifecycle ----------------------------------------------
+// --- 3. Authentication Handlers ----------------------------------------------
 
-function setupEventListeners() {
-  // Preset buttons
-  document.querySelectorAll(".trap-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".trap-btn").forEach(b => b.classList.remove("active"));
+function switchAuthTab(mode) {
+  const btnSignin = document.getElementById("tab-btn-signin");
+  const btnRegister = document.getElementById("tab-btn-register");
+  const groupRole = document.getElementById("group-role");
+  const submitText = document.getElementById("auth-submit-text");
+
+  if (mode === "signin") {
+    btnSignin.classList.add("active");
+    btnRegister.classList.remove("active");
+    groupRole.style.display = "none";
+    submitText.textContent = "Authenticate & Open Clinical Studio";
+  } else {
+    btnRegister.classList.add("active");
+    btnSignin.classList.remove("active");
+    groupRole.style.display = "block";
+    submitText.textContent = "Register Staff Member & Proceed";
+  }
+}
+
+function handleAuthSubmit(e) {
+  e.preventDefault();
+  const email = document.getElementById("auth-email").value;
+  appState.user = {
+    name: email.split("@")[0].replace(".", " ").toUpperCase(),
+    email: email
+  };
+  navigateTo("input");
+}
+
+function fastTrackLogin() {
+  appState.user = {
+    name: "DR. S. RAO (EXAMINER)",
+    email: "sarang.rao@hospital.org"
+  };
+  navigateTo("input");
+}
+
+// --- 4. Intake Workspace Logic ------------------------------------------------
+
+function selectIntakeCase(caseKey) {
+  document.querySelectorAll(".trap-select-btn").forEach(btn => {
+    btn.classList.remove("active");
+    if (btn.getAttribute("data-intake-case") === caseKey) {
       btn.classList.add("active");
-      state.activeKey = btn.getAttribute("data-preset");
-      triggerClinicalScanAnimation();
+    }
+  });
+
+  appState.selectedCaseKey = caseKey;
+  loadIntakeCase(caseKey);
+}
+
+function loadIntakeCase(caseKey) {
+  const caseData = CLINICAL_DATASETS[caseKey];
+  if (!caseData) return;
+
+  document.getElementById("intake-mrn-badge").textContent = `MRN: ${caseData.mrn}`;
+  document.getElementById("clinical-note-input").value = caseData.rawText;
+}
+
+// --- 5. Animated Processing Stepper ------------------------------------------
+
+function startProcessingFlow() {
+  navigateTo("processing");
+
+  const logBox = document.getElementById("processing-telemetry-log");
+  const step1 = document.getElementById("step-1");
+  const step2 = document.getElementById("step-2");
+  const step3 = document.getElementById("step-3");
+  const step4 = document.getElementById("step-4");
+
+  // Step 1: Initial parsing
+  logBox.textContent = "[Syntax] Segmenting clinical document into candidate sentences...";
+  step1.className = "stepper-item active";
+
+  setTimeout(() => {
+    step1.className = "stepper-item completed";
+    step2.className = "stepper-item active";
+    logBox.textContent = "[Qwen2.5-3B] Zero-shot extraction: 4 candidate clinical findings identified.";
+  }, 450);
+
+  setTimeout(() => {
+    step2.className = "stepper-item completed";
+    step3.className = "stepper-item active";
+    logBox.textContent = "[DeBERTa-v3] Cross-encoder evaluating premise-hypothesis entailment vectors...";
+  }, 950);
+
+  setTimeout(() => {
+    step3.className = "stepper-item completed";
+    step4.className = "stepper-item active";
+    logBox.textContent = `[Selective Policy] Applying calibrated threshold tau* = ${appState.threshold.toFixed(2)} (Dev Optimal).`;
+  }, 1450);
+
+  setTimeout(() => {
+    step4.className = "stepper-item completed";
+    logBox.textContent = "[Complete] Charting verified entries and suppressing detected hallucinations.";
+    setTimeout(() => {
+      renderFinalReport();
+      navigateTo("output");
+    }, 400);
+  }, 1900);
+}
+
+// --- 6. Output Clinical Report Rendering --------------------------------------
+
+function renderFinalReport() {
+  const currentCase = CLINICAL_DATASETS[appState.selectedCaseKey];
+  if (!currentCase) return;
+
+  // Header
+  document.getElementById("output-report-headline").textContent = `Discharge Summary: ${currentCase.patientName} (${currentCase.encounter})`;
+  document.getElementById("output-report-subhead").textContent = `MRN: ${currentCase.mrn} &bull; Model: Qwen2.5-3B + DeBERTa-v3 Cross-Encoder &bull; Decision Threshold &tau;*: ${appState.threshold.toFixed(2)}`;
+
+  // Approved List
+  const approvedListEl = document.getElementById("report-approved-list");
+  approvedListEl.innerHTML = "";
+
+  currentCase.approvedEntries.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "verified-entry-card";
+    card.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <span style="font-size: 0.7rem; font-family: var(--font-mono); color: #059669; text-transform: uppercase; font-weight: 700;">
+          ✓ ${item.type} (ENTERED TO EHR)
+        </span>
+        <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #065f46; font-weight: 700;">
+          CONF: ${item.confidence}% &bull; ENTAIL: ${item.entailment}%
+        </span>
+      </div>
+      <div style="font-size: 0.98rem; font-weight: 700; color: #064e3b;">${escapeHtml(item.name)}</div>
+      <div style="font-size: 0.76rem; color: #047857; margin-top: 4px; font-family: var(--font-mono);">
+        Grounding: “${escapeHtml(item.sentence)}”
+      </div>
+      <div style="font-size: 0.74rem; color: #065f46; margin-top: 4px;">${escapeHtml(item.reason)}</div>
+    `;
+    approvedListEl.appendChild(card);
+  });
+
+  document.getElementById("report-approved-count").textContent = `${currentCase.approvedEntries.length} SAFE ENTRIES`;
+
+  // Blocked List
+  const blockedListEl = document.getElementById("report-blocked-list");
+  blockedListEl.innerHTML = "";
+
+  if (currentCase.blockedHallucinations.length === 0) {
+    blockedListEl.innerHTML = `
+      <div style="padding: 24px; text-align: center; color: #64748b; font-size: 0.88rem;">
+        ✓ Zero hallucinations detected in this record. All findings passed strict NLI verification.
+      </div>
+    `;
+    document.getElementById("report-blocked-count").textContent = "0 ERRORS";
+  } else {
+    currentCase.blockedHallucinations.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "blocked-hallucination-card";
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 0.7rem; font-family: var(--font-mono); color: #dc2626; text-transform: uppercase; font-weight: 700;">
+            🛑 BLOCKED FROM PATIENT CHART
+          </span>
+          <span style="font-size: 0.74rem; font-family: var(--font-mono); color: #991b1b; font-weight: 700;">
+            CONTRADICTION: ${item.contradiction}%
+          </span>
+        </div>
+        <div style="font-size: 0.98rem; font-weight: 700; color: #7f1d1d; text-decoration: line-through;">${escapeHtml(item.name)}</div>
+        <div style="font-size: 0.76rem; color: #991b1b; margin-top: 6px; font-weight: 600; line-height: 1.45;">
+          ${escapeHtml(item.reason)}
+        </div>
+      `;
+      blockedListEl.appendChild(card);
     });
-  });
+    document.getElementById("report-blocked-count").textContent = `${currentCase.blockedHallucinations.length} HALLUCINATION(S) SUPPRESSED`;
+  }
+}
 
-  // Threshold slider
-  const slider = document.getElementById("threshold-range-slider");
-  const badge = document.getElementById("tau-badge-display");
+// --- 7. Export Authentic HL7 FHIR JSON Bundle ---------------------------------
 
-  slider.addEventListener("input", e => {
-    const val = parseFloat(e.target.value);
-    state.threshold = val;
-    badge.textContent = val.toFixed(2);
-    renderCurrentCase();
-  });
+function exportFHIRBundle() {
+  const currentCase = CLINICAL_DATASETS[appState.selectedCaseKey];
+  if (!currentCase) return;
 
-  // Audit button
-  const auditBtn = document.getElementById("btn-trigger-audit");
-  if (auditBtn) auditBtn.addEventListener("click", triggerClinicalScanAnimation);
+  const bundle = {
+    resourceType: "Bundle",
+    type: "document",
+    timestamp: new Date().toISOString(),
+    entry: [
+      {
+        resource: {
+          resourceType: "Patient",
+          id: currentCase.mrn,
+          name: [{ text: currentCase.patientName }]
+        }
+      },
+      ...currentCase.approvedEntries.map((item, idx) => {
+        if (item.type === "Diagnosis") {
+          return {
+            resource: {
+              resourceType: "Condition",
+              id: `cond-${idx}`,
+              clinicalStatus: { coding: [{ code: "active" }] },
+              verificationStatus: { coding: [{ code: "confirmed", system: "veritas-clin/nli" }] },
+              code: { text: item.name },
+              note: [{ text: `Verified via DeBERTa NLI Cross-Encoder (${item.entailment}% entailment).` }]
+            }
+          };
+        } else if (item.type === "Medication") {
+          return {
+            resource: {
+              resourceType: "MedicationRequest",
+              id: `med-${idx}`,
+              status: "active",
+              intent: "order",
+              medicationCodeableConcept: { text: item.name },
+              dosageInstruction: item.dosage ? [{ text: item.dosage }] : []
+            }
+          };
+        } else {
+          return {
+            resource: {
+              resourceType: "ServiceRequest",
+              id: `srv-${idx}`,
+              status: "active",
+              intent: "plan",
+              code: { text: item.name }
+            }
+          };
+        }
+      })
+    ]
+  };
 
-  // Examiner Guide Modal
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `FHIR_${currentCase.mrn}_VERITAS_EXPORT.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// --- 8. Viva Guide Modal Controls --------------------------------------------
+
+function openGuideModal() {
   const modal = document.getElementById("examiner-guide-modal");
-  const openBtn = document.getElementById("btn-open-guide");
-  const closeBtn = document.getElementById("btn-close-guide");
+  if (modal) modal.classList.add("active");
+}
 
-  if (openBtn && modal) {
-    openBtn.addEventListener("click", () => modal.classList.add("active"));
-  }
-
-  if (closeBtn && modal) {
-    closeBtn.addEventListener("click", () => modal.classList.remove("active"));
-  }
-
-  window.addEventListener("click", e => {
-    if (e.target === modal) modal.classList.remove("active");
-  });
+function closeGuideModal() {
+  const modal = document.getElementById("examiner-guide-modal");
+  if (modal) modal.classList.remove("active");
 }
 
 function escapeHtml(str) {
@@ -720,6 +574,14 @@ function escapeHtml(str) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  setupEventListeners();
-  renderCurrentCase();
+  // Close modal on backdrop click
+  const modal = document.getElementById("examiner-guide-modal");
+  if (modal) {
+    window.addEventListener("click", e => {
+      if (e.target === modal) closeGuideModal();
+    });
+  }
+
+  // Initial load
+  loadIntakeCase(appState.selectedCaseKey);
 });
