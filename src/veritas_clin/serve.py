@@ -47,27 +47,29 @@ def _load_raw() -> list[dict]:
 
 
 def _load_models():
-    """Load cached models from disk into _STATE if present."""
+    """Load cached embedding models from disk, then rebuild classifiers."""
     from .depression_nlp import Word2Vec, GloVe
     if _STATE["w2v"] is None and _W2V_PATH.exists():
         _STATE["w2v"] = Word2Vec.from_dict(json.loads(_W2V_PATH.read_text()))
     if _STATE["glove"] is None and _GLV_PATH.exists():
         _STATE["glove"] = GloVe.from_dict(json.loads(_GLV_PATH.read_text()))
     if _STATE["eval"] is None and _EVAL_PATH.exists():
-        ev = json.loads(_EVAL_PATH.read_text())
-        _STATE["eval"] = ev
-        # Rebuild classifiers from eval data stored models
-        _rebuild_classifiers_from_eval(ev)
+        _STATE["eval"] = json.loads(_EVAL_PATH.read_text())
+    # Rebuild classifiers whenever at least one embedding model is loaded
+    if _STATE["w2v"] or _STATE["glove"]:
+        _rebuild_classifiers()
 
 
-def _rebuild_classifiers_from_eval(ev: dict):
-    """Re-train classifiers cheaply using stored eval so /predict works after restart."""
+def _rebuild_classifiers():
+    """Rebuild all classifiers from disk models — called on startup and after training."""
     if not _RAW_PATH.exists():
         return
     try:
-        from .depression_nlp import split_dataset, preprocess, Word2Vec, GloVe
+        import numpy as np
         from sklearn.feature_extraction.text import TfidfVectorizer
         from sklearn.linear_model import LogisticRegression
+        from .depression_nlp import split_dataset, preprocess
+
         rows = _load_raw()
         train, _, _ = split_dataset(rows, seed=42)
         tr_tok = [preprocess(r["text"]) for r in train]
@@ -75,21 +77,18 @@ def _rebuild_classifiers_from_eval(ev: dict):
 
         tfidf = TfidfVectorizer(max_features=8000)
         X_tf  = tfidf.fit_transform([" ".join(t) for t in tr_tok]).toarray()
-        clf_tf = LogisticRegression(max_iter=1000, random_state=42).fit(X_tf, y_tr)
-        _STATE["tfidf_vec"] = tfidf
-        _STATE["clf"]["tfidf"] = clf_tf
+        _STATE["tfidf_vec"]    = tfidf
+        _STATE["clf"]["tfidf"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_tf, y_tr)
 
         if _STATE["w2v"]:
-            import numpy as np
             X_w = np.array([_STATE["w2v"].note_vector(t) for t in tr_tok])
             _STATE["clf"]["word2vec"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_w, y_tr)
 
         if _STATE["glove"]:
-            import numpy as np
             X_g = np.array([_STATE["glove"].note_vector(t) for t in tr_tok])
             _STATE["clf"]["glove"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_g, y_tr)
-    except Exception:
-        pass  # best-effort; predict will return "not trained" if clf missing
+    except Exception as exc:
+        print(f"[warn] classifier rebuild failed: {exc}")
 
 
 @asynccontextmanager
@@ -180,6 +179,9 @@ def api_train(body: dict):
             _GLV_PATH.write_text(json.dumps(m.to_dict()))
             _STATE["glove"] = m
             trained.append(f"glove (vocab {len(m.vocab)})")
+
+        # Rebuild all classifiers so /predict works immediately
+        _rebuild_classifiers()
 
         return {"status": "ok", "trained": trained,
                 "message": "Trained " + ", ".join(trained)}
