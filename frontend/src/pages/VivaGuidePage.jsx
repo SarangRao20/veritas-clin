@@ -1,11 +1,10 @@
-import { Fragment } from 'react';
-import { PageHeader, Panel } from '../components/ui';
+import { PageHeader } from '../components/ui';
 
-/** Examiner Q&A — duties each answer traces to a document or live artifact. */
+/** Examiner Q&A — every answer traces to a document, a unit-tested module, or a live artifact. */
 const QANDA = [
   {
     q: 'Walk through the pipeline end to end.',
-    a: 'Three stages. (1) Extraction: a zero-shot instruction-tuned LLM (Qwen2.5-3B-Instruct) emits structured claims typed as diagnosis / medication / follow-up. (2) Verification: each claim is paired with the sentence in the source note that grounds it, and a DeBERTa-v3 NLI cross-encoder (trained on MNLI+FEVER+ANLI) scores the pair — p(entailment) and p(contradiction). (3) calibrated abstention: score = 0.8·p(entail) + 0.2·token_conf is compared with a threshold learned on the dev split (τ* = 0.3499) with a hysteresis band at 0.8·τ*: above τ* the claim is auto-written, inside the band it is held for physician review, below it the system abstains outright.',
+    a: 'Three stages. (1) Extraction: a zero-shot instruction-tuned LLM (Qwen2.5-3B-Instruct) emits structured claims typed as diagnosis / medication / follow-up. (2) Verification: each claim is paired with the sentence in the source note that grounds it, and a DeBERTa-v3 NLI cross-encoder (trained on MNLI+FEVER+ANLI) scores the pair — p(entailment) and p(contradiction). (3) Calibrated abstention: score = 0.8·p(entail) + 0.2·token_conf is compared with a threshold learned on the dev split (τ* = 0.3499) with a hysteresis band at 0.8·τ*: above τ* the claim is auto-written, inside the band it is held for physician review, below it the system abstains outright.',
   },
   {
     q: 'Why no fine-tuning — isn\'t that the whole point of an ML project?',
@@ -21,7 +20,7 @@ const QANDA = [
   },
   {
     q: 'What does "calibrated" mean here — how is it measured?',
-    a: 'The decision score should mean what it says: ECE (Expected Calibration Error) is Σ over bins of (bin share × |accuracy − mean confidence|). On the dev split (τ search only) ECE = 0.15; on the untouched test split ECE = 0.1353. σ-confidence blends token entropy confidence with NLI entailment so the score is honest about two failure sources.',
+    a: 'The decision score should mean what it says: ECE (Expected Calibration Error) is Σ over bins of (bin share × |accuracy − mean confidence|). On the dev split (τ search only) ECE = 0.15; on the untouched test split ECE = 0.1353. The score blends token confidence with NLI entailment so it is honest about two failure sources.',
   },
   {
     q: 'What do the benchmark numbers actually say?',
@@ -29,33 +28,38 @@ const QANDA = [
   },
   {
     q: 'Where is the engineering rigor beyond "model calls"?',
-    a: 'Calibration math (ECE, risk–coverage, pick-threshold) is pure, unit-tested Python with no model or I/O calls; the serving path and benchmark harness share the same pipeline run() so numbers in analysis describe what actually ships; determinism is seeded end to end; an 800-fold FastAPI service serves the model, the SPA, and the artifacts; CI runs the full pytest suite (15 tests) plus the frontend build.',
+    a: 'Calibration math (ECE, risk–coverage, pick-threshold) is pure, unit-tested Python with no model or I/O calls; the serving path and benchmark harness share the same pipeline run() so numbers in analytics describe what actually ships; determinism is seeded end to end; a single FastAPI process serves the pipeline, the SPA, and the artifacts; the frontend calls /extract live — the Audit page is the real pipeline, reproducible with any text pasted in; CI runs the full pytest suite (15 tests) plus the frontend build.',
   },
   {
     q: 'What is the deployment story?',
-    a: 'A single FastAPI process: /extract runs the current policy (heuristic extractor on CPU hosts, full HF stack on GPU hosts), /artifacts exposes the benchmark plots served to the UI, and the SPA is a static bundle with no separate web server. The frontend calls /extract live — what you see in the Audit page is the real pipeline output, reproducible with any text pasted in.',
+    a: 'A single FastAPI process: /extract runs the current policy (heuristic extractor on CPU hosts, full HF stack on GPU hosts), /artifacts exposes the benchmark plots served to the UI, and the SPA is a static bundle with no separate web server. What you see in the Audit page is real pipeline output, reproducible with any text pasted in.',
   },
   {
     q: 'What is the single biggest limitation?',
-    a: 'The accept path is only as safe as the extractor + verifier pair agree — the NLI verifier is a single model, not an ensemble, and it was not adversarially fine-tuned. Robustness is measured, not guaranteed: the risk–coverage curve is the tool that makes the residual risk explicit and tunable by moving τ*.',
+    a: 'The accept path is only as safe as the extractor–verifier agreement — the NLI verifier is a single model, not an ensemble, and it was not adversarially fine-tuned. Robustness is measured, not guaranteed: the risk–coverage curve is the tool that makes the residual risk explicit and tunable by moving τ*.',
   },
 ];
 
+/** Plain document layout — no boxes, no widgets. A reading page. */
 export default function VivaGuidePage() {
   return (
-    <div>
+    <div className="max-w-3xl">
       <PageHeader
         eyebrow="Defense"
         title="Viva guide"
         sub="Nine questions an examiner is likely to ask, with answers that trace to a document, a unit-tested module, or a live artifact in this repo."
       />
-      <div className="space-y-4">
+      <dl className="divide-y divide-zinc-200 border-y border-zinc-200">
         {QANDA.map((item, i) => (
-          <Panel key={i} title={`Q${i + 1} · ${item.q}`}>
-            <p className="px-4 py-3 text-[13px] leading-relaxed text-zinc-700">{item.a}</p>
-          </Panel>
+          <div key={i} className="py-5">
+            <dt className="text-[16px] font-semibold text-zinc-900">
+              <span className="text-zinc-400 font-mono text-[13px] mr-2">{i + 1}.</span>
+              {item.q}
+            </dt>
+            <dd className="mt-2 text-[13.5px] leading-relaxed text-zinc-700">{item.a}</dd>
+          </div>
         ))}
-      </div>
+      </dl>
     </div>
   );
 }
