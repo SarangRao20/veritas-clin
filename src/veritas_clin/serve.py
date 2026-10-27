@@ -1,17 +1,11 @@
-"""FastAPI service for the ClinNLP project.
-
-New endpoints (/api/*) serve the Word2Vec / GloVe frontend.
-The old /health and /extract routes are kept for backward-compatibility with tests.
-"""
+"""FastAPI service — Depression Screening NLP project."""
 from __future__ import annotations
 
 import json
-import os
 import threading
-from collections import Counter
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,22 +15,24 @@ from fastapi.staticfiles import StaticFiles
 from .config import SETTINGS, ensure_dirs
 
 FRONTEND_DIST = SETTINGS.root / "frontend" / "dist"
-LEGACY_UI_DIR = SETTINGS.root / "ui"
-ACTIVE_UI_DIR = FRONTEND_DIST if FRONTEND_DIST.exists() else LEGACY_UI_DIR
+ACTIVE_UI_DIR = FRONTEND_DIST if FRONTEND_DIST.exists() else SETTINGS.root / "ui"
 
-# ---------------------------------------------------------------------------
-# Artifact paths for the NLP project
-# ---------------------------------------------------------------------------
-_DATA_DIR  = SETTINGS.root / "data"
-_ART_DIR   = SETTINGS.root / "artifacts"
-_CORPUS_PATH    = _DATA_DIR  / "clinnlp_corpus.json"
-_W2V_PATH       = _ART_DIR   / "w2v.json"
-_GLOVE_PATH     = _ART_DIR   / "glove.json"
-_EVAL_PATH      = _ART_DIR   / "clinnlp_eval.json"
+_ROOT      = SETTINGS.root
+_DATA_DIR  = _ROOT / "data"
+_ART_DIR   = _ROOT / "artifacts"
+_RAW_PATH  = _DATA_DIR / "depression_raw.json"
+_W2V_PATH  = _ART_DIR  / "dep_w2v.json"
+_GLV_PATH  = _ART_DIR  / "dep_glv.json"
+_EVAL_PATH = _ART_DIR  / "dep_eval.json"
+_TFIDF_PATH = _ART_DIR / "dep_tfidf.json"
 
-# In-memory model cache (loaded once per process)
-_MODELS: dict[str, Any] = {}
-_TRAIN_LOCK = threading.Lock()
+# In-memory cache
+_STATE: dict[str, Any] = {
+    "w2v": None, "glove": None,
+    "clf": {},   "tfidf_vec": None,
+    "eval": None,
+}
+_LOCK = threading.Lock()
 
 
 def _ensure_dirs():
@@ -44,168 +40,151 @@ def _ensure_dirs():
     _ART_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def _load_corpus() -> list[dict]:
-    if not _CORPUS_PATH.exists():
-        from .clinnlp import generate_corpus
-        notes = generate_corpus(n=400, seed=42)
-        _CORPUS_PATH.write_text(json.dumps(notes), encoding="utf-8")
-    return json.loads(_CORPUS_PATH.read_text(encoding="utf-8"))
+def _load_raw() -> list[dict]:
+    if not _RAW_PATH.exists():
+        raise FileNotFoundError("Dataset not found. Run: python -m veritas_clin.fetch_data")
+    return json.loads(_RAW_PATH.read_text())
 
 
-def _get_model(name: str):
-    if name in _MODELS:
-        return _MODELS[name]
-    path = _W2V_PATH if name == "word2vec" else _GLOVE_PATH
-    if not path.exists():
-        return None
-    from .clinnlp import Word2Vec, GloVe
-    d = json.loads(path.read_text(encoding="utf-8"))
-    model = Word2Vec.from_dict(d) if name == "word2vec" else GloVe.from_dict(d)
-    _MODELS[name] = model
-    return model
+def _load_models():
+    """Load cached models from disk into _STATE if present."""
+    from .depression_nlp import Word2Vec, GloVe
+    if _STATE["w2v"] is None and _W2V_PATH.exists():
+        _STATE["w2v"] = Word2Vec.from_dict(json.loads(_W2V_PATH.read_text()))
+    if _STATE["glove"] is None and _GLV_PATH.exists():
+        _STATE["glove"] = GloVe.from_dict(json.loads(_GLV_PATH.read_text()))
+    if _STATE["eval"] is None and _EVAL_PATH.exists():
+        ev = json.loads(_EVAL_PATH.read_text())
+        _STATE["eval"] = ev
+        # Rebuild classifiers from eval data stored models
+        _rebuild_classifiers_from_eval(ev)
 
 
-# ---------------------------------------------------------------------------
-# Lifespan
-# ---------------------------------------------------------------------------
+def _rebuild_classifiers_from_eval(ev: dict):
+    """Re-train classifiers cheaply using stored eval so /predict works after restart."""
+    if not _RAW_PATH.exists():
+        return
+    try:
+        from .depression_nlp import split_dataset, preprocess, Word2Vec, GloVe
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.linear_model import LogisticRegression
+        rows = _load_raw()
+        train, _, _ = split_dataset(rows, seed=42)
+        tr_tok = [preprocess(r["text"]) for r in train]
+        y_tr   = [r["label"] for r in train]
+
+        tfidf = TfidfVectorizer(max_features=8000)
+        X_tf  = tfidf.fit_transform([" ".join(t) for t in tr_tok]).toarray()
+        clf_tf = LogisticRegression(max_iter=1000, random_state=42).fit(X_tf, y_tr)
+        _STATE["tfidf_vec"] = tfidf
+        _STATE["clf"]["tfidf"] = clf_tf
+
+        if _STATE["w2v"]:
+            import numpy as np
+            X_w = np.array([_STATE["w2v"].note_vector(t) for t in tr_tok])
+            _STATE["clf"]["word2vec"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_w, y_tr)
+
+        if _STATE["glove"]:
+            import numpy as np
+            X_g = np.array([_STATE["glove"].note_vector(t) for t in tr_tok])
+            _STATE["clf"]["glove"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_g, y_tr)
+    except Exception:
+        pass  # best-effort; predict will return "not trained" if clf missing
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ensure_dirs()
     _ensure_dirs()
-    # Lazy-load old extraction pipeline only when needed (keeps startup fast)
+    _load_models()
     yield
 
 
-app = FastAPI(
-    title="ClinNLP",
-    description="Clinical note classification with Word2Vec and GloVe",
-    version="2.0.0",
-    lifespan=lifespan,
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app = FastAPI(title="Depression Screening NLP", version="1.0.0", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"],
+                   allow_methods=["*"], allow_headers=["*"])
 
 
 # ---------------------------------------------------------------------------
-# Health (kept for tests)
+# Health
 # ---------------------------------------------------------------------------
 
 @app.get("/health")
 def health():
     return {
         "status": "ok",
-        "extractor": "heuristic",
+        "dataset":       _RAW_PATH.exists(),
+        "word2vec":      _W2V_PATH.exists(),
+        "glove":         _GLV_PATH.exists(),
+        "evaluated":     _EVAL_PATH.exists(),
+        "extractor":     "heuristic",   # kept for test compat
         "models_loaded": True,
-        "word2vec_trained": _W2V_PATH.exists(),
-        "glove_trained":    _GLOVE_PATH.exists(),
     }
 
 
 # ---------------------------------------------------------------------------
-# /api/overview
+# /api/dataset  – basic stats
 # ---------------------------------------------------------------------------
 
-@app.get("/api/overview")
-def api_overview():
-    from .clinnlp import generate_corpus, stratified_split, preprocess, DOMAINS
-    notes = _load_corpus()
-    train, val, test = stratified_split(notes, seed=42)
-    vocab: Counter = Counter()
-    for n in train:
-        vocab.update(preprocess(n["text"]))
-
-    result: dict[str, Any] = {
-        "n_notes":     len(notes),
-        "seed":        42,
-        "n_domains":   len(DOMAINS),
-        "domains":     DOMAINS,
-        "vocab_size":  len(vocab),
+@app.get("/api/dataset")
+def api_dataset():
+    rows = _load_raw()
+    from .depression_nlp import split_dataset, preprocess
+    from collections import Counter
+    train, val, test = split_dataset(rows, seed=42)
+    sample_tokens = preprocess(rows[0]["text"])
+    label_dist = Counter(r["label"] for r in rows)
+    return {
+        "total":       len(rows),
+        "depressive":  label_dist[1],
+        "non_depressive": label_dist[0],
         "split_train": len(train),
         "split_val":   len(val),
         "split_test":  len(test),
+        "source":      "Reddit (mrjunos/depression-reddit-cleaned)",
+        "sample_text": rows[42]["text"][:180],
+        "sample_tokens": sample_tokens[:12],
     }
 
-    if _EVAL_PATH.exists():
-        ev = json.loads(_EVAL_PATH.read_text(encoding="utf-8"))
-        result["results"] = [
-            {"model": r["model"], "accuracy": r["accuracy"], "macro_f1": r["macro_f1"]}
-            for r in ev.get("results", [])
-        ]
-
-    return result
-
 
 # ---------------------------------------------------------------------------
-# /api/corpus
-# ---------------------------------------------------------------------------
-
-@app.get("/api/corpus")
-def api_corpus():
-    from .clinnlp import stratified_split, preprocess, DOMAINS
-    notes = _load_corpus()
-    train, val, test = stratified_split(notes, seed=42)
-    split_map = {n["note_id"]: "train" for n in train}
-    split_map.update({n["note_id"]: "val"   for n in val})
-    split_map.update({n["note_id"]: "test"  for n in test})
-
-    out = []
-    for n in notes:
-        tokens = preprocess(n["text"])
-        out.append({
-            "note_id":     n["note_id"],
-            "domain":      n["domain"],
-            "split":       split_map.get(n["note_id"], "?"),
-            "text":        n["text"],
-            "tokens":      tokens,
-            "token_count": len(tokens),
-        })
-
-    return {"notes": out, "domains": DOMAINS, "seed": 42}
-
-
-# ---------------------------------------------------------------------------
-# /api/train  (POST)
+# /api/train  – train Word2Vec or GloVe (POST {"model": "word2vec"|"glove"|"all"})
 # ---------------------------------------------------------------------------
 
 @app.post("/api/train")
 def api_train(body: dict):
     model_name = body.get("model", "word2vec").lower()
-    if model_name not in ("word2vec", "glove"):
-        raise HTTPException(400, "model must be 'word2vec' or 'glove'")
+    if model_name not in ("word2vec", "glove", "all"):
+        raise HTTPException(400, "model must be word2vec / glove / all")
 
-    if not _TRAIN_LOCK.acquire(blocking=False):
+    if not _LOCK.acquire(blocking=False):
         raise HTTPException(409, "Training already in progress")
 
     try:
-        from .clinnlp import generate_corpus, stratified_split, preprocess, Word2Vec, GloVe
-        notes = _load_corpus()
-        train, _, _ = stratified_split(notes, seed=42)
-        sentences = [preprocess(n["text"]) for n in train]
+        from .depression_nlp import split_dataset, preprocess, Word2Vec, GloVe
+        rows  = _load_raw()
+        train, _, _ = split_dataset(rows, seed=42)
+        sents = [preprocess(r["text"]) for r in train]
 
-        if model_name == "word2vec":
-            m = Word2Vec(dim=100, window=5, neg=5, epochs=10, seed=42)
-            m.fit(sentences, min_count=2)
-            _GLOVE_PATH.parent.mkdir(parents=True, exist_ok=True)
-            _W2V_PATH.write_text(json.dumps(m.to_dict()), encoding="utf-8")
-            _MODELS["word2vec"] = m
-            vocab_size = len(m.vocab)
-        else:
-            m = GloVe(dim=100, window=5, epochs=25, seed=42)
-            m.fit(sentences, min_count=2)
-            _GLOVE_PATH.write_text(json.dumps(m.to_dict()), encoding="utf-8")
-            _MODELS["glove"] = m
-            vocab_size = len(m.vocab)
+        trained = []
+        if model_name in ("word2vec", "all"):
+            m = Word2Vec(dim=100, window=5, neg=5, epochs=5, seed=42)
+            m.fit(sents, min_count=3)
+            _W2V_PATH.write_text(json.dumps(m.to_dict()))
+            _STATE["w2v"] = m
+            trained.append(f"word2vec (vocab {len(m.vocab)})")
 
-        return {"status": "ok", "model": model_name, "vocab_size": vocab_size,
-                "message": f"Trained {model_name} · vocab {vocab_size}"}
+        if model_name in ("glove", "all"):
+            m = GloVe(dim=100, window=5, epochs=15, seed=42)
+            m.fit(sents, min_count=3)
+            _GLV_PATH.write_text(json.dumps(m.to_dict()))
+            _STATE["glove"] = m
+            trained.append(f"glove (vocab {len(m.vocab)})")
+
+        return {"status": "ok", "trained": trained,
+                "message": "Trained " + ", ".join(trained)}
     finally:
-        _TRAIN_LOCK.release()
+        _LOCK.release()
 
 
 # ---------------------------------------------------------------------------
@@ -214,19 +193,75 @@ def api_train(body: dict):
 
 @app.get("/api/train-status")
 def api_train_status():
-    status: dict[str, Any] = {
-        "word2vec": _W2V_PATH.exists(),
-        "glove":    _GLOVE_PATH.exists(),
+    return {
+        "word2vec":      _W2V_PATH.exists(),
+        "glove":         _GLV_PATH.exists(),
+        "evaluated":     _EVAL_PATH.exists(),
+        "word2vec_vocab": len(_STATE["w2v"].vocab) if _STATE["w2v"] else None,
+        "glove_vocab":    len(_STATE["glove"].vocab) if _STATE["glove"] else None,
     }
-    for name in ("word2vec", "glove"):
-        m = _get_model(name)
-        if m:
-            status[f"{name}_vocab"] = len(m.vocab)
-    return status
 
 
 # ---------------------------------------------------------------------------
-# /api/neighbors  (POST)
+# /api/evaluate  – run full evaluation (GET triggers re-run)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/evaluate")
+def api_evaluate():
+    from .depression_nlp import split_dataset, preprocess, evaluate_all
+    import numpy as np
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    w2v = _STATE["w2v"]
+    glv = _STATE["glove"]
+    if w2v is None or glv is None:
+        raise HTTPException(400, "Train both Word2Vec and GloVe first")
+
+    rows = _load_raw()
+    train, _, test = split_dataset(rows, seed=42)
+    ev = evaluate_all(train, test, w2v, glv)
+
+    # Store classifiers in memory for /api/predict
+    tr_tok = [preprocess(r["text"]) for r in train]
+    y_tr   = [r["label"] for r in train]
+
+    tfidf = TfidfVectorizer(max_features=8000)
+    X_tf  = tfidf.fit_transform([" ".join(t) for t in tr_tok]).toarray()
+    clf_tf = LogisticRegression(max_iter=1000, random_state=42).fit(X_tf, y_tr)
+    _STATE["tfidf_vec"] = tfidf
+    _STATE["clf"]["tfidf"] = clf_tf
+
+    X_w = np.array([w2v.note_vector(t) for t in tr_tok])
+    _STATE["clf"]["word2vec"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_w, y_tr)
+
+    X_g = np.array([glv.note_vector(t) for t in tr_tok])
+    _STATE["clf"]["glove"] = LogisticRegression(max_iter=1000, random_state=42).fit(X_g, y_tr)
+
+    # Persist (without clf objects — they are not serialisable simply)
+    serialisable = {k: v for k, v in ev.items()}
+    _EVAL_PATH.write_text(json.dumps(serialisable))
+    _STATE["eval"] = serialisable
+    return serialisable
+
+
+# ---------------------------------------------------------------------------
+# /api/results  – return cached evaluation
+# ---------------------------------------------------------------------------
+
+@app.get("/api/results")
+def api_results():
+    if _STATE["eval"]:
+        return _STATE["eval"]
+    if _EVAL_PATH.exists():
+        ev = json.loads(_EVAL_PATH.read_text())
+        _STATE["eval"] = ev
+        return ev
+    return {"results": None}
+
+
+# ---------------------------------------------------------------------------
+# /api/neighbors  (POST {"model": "word2vec"|"glove", "word": "...", "top_n": 10})
 # ---------------------------------------------------------------------------
 
 @app.post("/api/neighbors")
@@ -234,109 +269,72 @@ def api_neighbors(body: dict):
     model_name = body.get("model", "word2vec").lower()
     word       = (body.get("word") or "").strip().lower()
     top_n      = int(body.get("top_n", 10))
-
     if not word:
         raise HTTPException(400, "word is required")
-    m = _get_model(model_name)
+    m = _STATE["w2v"] if model_name == "word2vec" else _STATE["glove"]
     if m is None:
         raise HTTPException(404, f"{model_name} not trained yet")
-
-    results = m.neighbors(word, top_n=top_n)
+    results = m.neighbors(word, top_n)
     return {
-        "model": model_name,
-        "word": word,
+        "model": model_name, "word": word,
         "in_vocab": word in m.vocab,
         "neighbors": [{"word": w, "similarity": round(s, 4)} for w, s in results],
     }
 
 
 # ---------------------------------------------------------------------------
-# /api/note-vector  (POST)
+# /api/predict  (POST {"text": "...", "model": "tfidf|word2vec|glove"})
 # ---------------------------------------------------------------------------
 
-@app.post("/api/note-vector")
-def api_note_vector(body: dict):
-    from .clinnlp import preprocess
-    model_name = body.get("model", "word2vec").lower()
-    text       = (body.get("text") or "").strip()
+@app.post("/api/predict")
+def api_predict(body: dict):
+    from .depression_nlp import predict_text
+    text  = (body.get("text") or "").strip()
+    model = (body.get("model") or "word2vec").lower()
     if not text:
         raise HTTPException(400, "text is required")
-    m = _get_model(model_name)
-    if m is None:
-        raise HTTPException(404, f"{model_name} not trained yet")
-
-    tokens = preprocess(text)
-    oov    = [t for t in tokens if t not in m.vocab]
-    vec    = m.note_vector(tokens)
-    return {
-        "model":     model_name,
-        "dim":       m.dim,
-        "tokens":    tokens,
-        "oov_count": len(oov),
-        "oov":       oov[:10],
-        "vector":    [round(float(v), 5) for v in vec],
-    }
+    result = predict_text(
+        text, model,
+        _STATE["clf"],
+        _STATE["w2v"],
+        _STATE["glove"],
+        _STATE["tfidf_vec"],
+    )
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    return result
 
 
 # ---------------------------------------------------------------------------
-# /api/evaluation
-# ---------------------------------------------------------------------------
-
-@app.get("/api/evaluation")
-def api_evaluation():
-    from .clinnlp import DOMAINS, stratified_split, evaluate_all
-    w2v  = _get_model("word2vec")
-    glv  = _get_model("glove")
-
-    if w2v is None or glv is None:
-        # Return structure with no results so UI can show "train first" message
-        return {"domains": DOMAINS, "results": None}
-
-    notes = _load_corpus()
-    train, _, test = stratified_split(notes, seed=42)
-    ev = evaluate_all(train, test, w2v, glv)
-    _EVAL_PATH.write_text(json.dumps(ev), encoding="utf-8")
-    ev["domains"] = DOMAINS
-    return ev
-
-
-# ---------------------------------------------------------------------------
-# Legacy /extract kept for existing tests
+# Legacy /extract for existing tests
 # ---------------------------------------------------------------------------
 
 @app.post("/extract")
 def extract_legacy(body: dict):
     from .extract import HeuristicExtractor
     from .pipeline import extract_and_verify, assign_decisions
-    text = body.get("note_text", "")
-    claims = extract_and_verify(HeuristicExtractor(), None, text)
+    claims = extract_and_verify(HeuristicExtractor(), None, body.get("note_text", ""))
     assign_decisions(claims, threshold=0.8, low_frac=0.8)
     return {"claims": [c.__dict__ for c in claims]}
 
 
 # ---------------------------------------------------------------------------
-# Static assets and SPA fallback
+# Static + SPA fallback
 # ---------------------------------------------------------------------------
 
 if (FRONTEND_DIST / "assets").exists():
     app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="assets")
-
 if _ART_DIR.exists():
     app.mount("/artifacts", StaticFiles(directory=str(_ART_DIR)), name="artifacts")
 
-
 @app.api_route("/favicon.ico", methods=["GET", "HEAD"])
-def favicon():
-    return Response(status_code=204)
-
+def favicon(): return Response(status_code=204)
 
 @app.api_route("/{full_path:path}", methods=["GET", "HEAD"], response_class=FileResponse)
 def spa(full_path: str):
     if full_path:
         f = ACTIVE_UI_DIR / full_path
-        if f.is_file():
-            return FileResponse(f)
+        if f.is_file(): return FileResponse(f)
     idx = ACTIVE_UI_DIR / "index.html"
-    if idx.exists():
-        return FileResponse(idx)
+    if idx.exists(): return FileResponse(idx)
     raise HTTPException(404, "index.html not found")

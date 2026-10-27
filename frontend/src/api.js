@@ -20,12 +20,12 @@ async function post(path, body) {
 }
 
 export const api = {
-  health:       () => get('/health'),
-  overview:     () => get('/api/overview'),
-  corpus:       () => get('/api/corpus'),
-  train:        (model) => post('/api/train', { model }),
-  neighbors:    (model, word, n = 10) => post('/api/neighbors', { model, word, top_n: n }),
-  noteVector:   (model, text) => post('/api/note-vector', { model, text }),
-  evaluation:   () => get('/api/evaluation'),
-  trainStatus:  () => get('/api/train-status'),
+  health:      () => get('/health'),
+  dataset:     () => get('/api/dataset'),
+  trainStatus: () => get('/api/train-status'),
+  train:       (model) => post('/api/train', { model }),
+  evaluate:    () => get('/api/evaluate'),
+  results:     () => get('/api/results'),
+  neighbors:   (model, word, n = 10) => post('/api/neighbors', { model, word, top_n: n }),
+  predict:     (text, model) => post('/api/predict', { text, model }),
 };
