@@ -1,4 +1,4 @@
-"""FastAPI service: REST API + Interactive 3D Clinical Telemetry Studio."""
+"""FastAPI service: REST API + Multi-Stage Enterprise Clinical Safety Platform."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,7 +19,11 @@ from .pipeline import ExtractionPipeline
 from .schemas import ExtractRequest, ExtractionResponse
 from .verify import Verifier
 
-UI_DIR = SETTINGS.root / "ui"
+FRONTEND_DIST = SETTINGS.root / "frontend" / "dist"
+LEGACY_UI_DIR = SETTINGS.root / "ui"
+
+# Prefer compiled React distribution if built, else fallback to ui/
+ACTIVE_UI_DIR = FRONTEND_DIST if FRONTEND_DIST.exists() else LEGACY_UI_DIR
 
 
 def load_policy() -> tuple[float, float]:
@@ -41,7 +45,6 @@ class _Service:
         ensure_dirs()
         threshold, low_frac = load_policy()
         verifier = None
-        # Only load verifier if hf or requested
         if self.kind == "hf":
             verifier = Verifier()
         self.pipe = ExtractionPipeline(
@@ -64,7 +67,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(
     title="Veritas-Clin",
     description="Evidence-Grounded Clinical Information Extraction with Calibrated Selective Abstention",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -106,40 +109,41 @@ def extract(body: ExtractRequest) -> ExtractionResponse:
     )
 
 
-# Specific routes for assets supporting both GET and HEAD
-@app.api_route("/styles.css", methods=["GET", "HEAD"])
-def get_styles():
-    css_file = UI_DIR / "styles.css"
-    if css_file.exists():
-        return FileResponse(css_file, media_type="text/css")
-    raise HTTPException(status_code=404, detail="styles.css not found")
-
-
-@app.api_route("/app.js", methods=["GET", "HEAD"])
-def get_app_js():
-    js_file = UI_DIR / "app.js"
-    if js_file.exists():
-        return FileResponse(js_file, media_type="application/javascript")
-    raise HTTPException(status_code=404, detail="app.js not found")
-
-
-@app.api_route("/favicon.ico", methods=["GET", "HEAD"])
-def get_favicon():
-    from fastapi import Response
-    return Response(status_code=204)
-
-
-# Mount UI and Artifacts
-if UI_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
+# Mount Static Assets & Artifacts
+if (FRONTEND_DIST / "assets").exists():
+    app.mount("/assets", StaticFiles(directory=str(FRONTEND_DIST / "assets")), name="react-assets")
 
 if SETTINGS.artifacts_dir.exists():
     app.mount("/artifacts", StaticFiles(directory=str(SETTINGS.artifacts_dir)), name="artifacts")
 
+if LEGACY_UI_DIR.exists():
+    app.mount("/legacy-ui", StaticFiles(directory=str(LEGACY_UI_DIR)), name="legacy-ui")
+
+
+@app.api_route("/favicon.ico", methods=["GET", "HEAD"])
+def get_favicon():
+    return Response(status_code=204)
+
+
+@app.api_route("/styles.css", methods=["GET", "HEAD"])
+def get_styles():
+    css = ACTIVE_UI_DIR / "styles.css"
+    if css.exists():
+        return FileResponse(css, media_type="text/css")
+    return Response(status_code=204)
+
+
+@app.api_route("/app.js", methods=["GET", "HEAD"])
+def get_app_js():
+    js = ACTIVE_UI_DIR / "app.js"
+    if js.exists():
+        return FileResponse(js, media_type="application/javascript")
+    return Response(status_code=204)
+
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=FileResponse)
-def serve_ui():
-    index_file = UI_DIR / "index.html"
+def serve_root():
+    index_file = ACTIVE_UI_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
     raise HTTPException(status_code=404, detail="UI index.html not found.")
