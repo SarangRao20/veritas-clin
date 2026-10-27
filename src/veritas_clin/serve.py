@@ -106,6 +106,29 @@ def extract(body: ExtractRequest) -> ExtractionResponse:
     )
 
 
+# Specific routes for assets supporting both GET and HEAD
+@app.api_route("/styles.css", methods=["GET", "HEAD"])
+def get_styles():
+    css_file = UI_DIR / "styles.css"
+    if css_file.exists():
+        return FileResponse(css_file, media_type="text/css")
+    raise HTTPException(status_code=404, detail="styles.css not found")
+
+
+@app.api_route("/app.js", methods=["GET", "HEAD"])
+def get_app_js():
+    js_file = UI_DIR / "app.js"
+    if js_file.exists():
+        return FileResponse(js_file, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="app.js not found")
+
+
+@app.api_route("/favicon.ico", methods=["GET", "HEAD"])
+def get_favicon():
+    from fastapi import Response
+    return Response(status_code=204)
+
+
 # Mount UI and Artifacts
 if UI_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(UI_DIR)), name="ui")
@@ -114,7 +137,7 @@ if SETTINGS.artifacts_dir.exists():
     app.mount("/artifacts", StaticFiles(directory=str(SETTINGS.artifacts_dir)), name="artifacts")
 
 
-@app.get("/", response_class=FileResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=FileResponse)
 def serve_ui():
     index_file = UI_DIR / "index.html"
     if index_file.exists():
