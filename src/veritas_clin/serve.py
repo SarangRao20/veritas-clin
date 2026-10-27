@@ -96,6 +96,54 @@ def get_metrics() -> dict:
     raise HTTPException(status_code=404, detail="Metrics artifact not generated yet.")
 
 
+# --- NLP Foundations Endpoints (Zipf, BPE, TF-IDF, Word2Vec Negation Paradox) ---
+
+@app.get("/api/nlp/zipf")
+def get_zipf_analysis():
+    from .data_gen import ensure_corpus
+    from .nlp_foundations import analyze_zipfs_law
+    corpus = ensure_corpus()
+    texts = [r["text"] for r in corpus]
+    return analyze_zipfs_law(texts, top_k=25)
+
+
+@app.get("/api/nlp/bpe")
+def get_bpe_tokenization(word: str = "hypercholesterolemia"):
+    from .nlp_foundations import SimpleBPETokenizer
+    tokenizer = SimpleBPETokenizer()
+    subwords = tokenizer.tokenize_subwords(word)
+    return {
+        "input_word": word,
+        "subword_tokens": subwords,
+        "token_count": len(subwords),
+        "explanation": f"BPE splits complex morphological entity '{word}' into {len(subwords)} subword components to handle Out-Of-Vocabulary (OOV) medical roots."
+    }
+
+
+@app.post("/api/nlp/tfidf")
+def query_tfidf(query: str = "Acute Kidney Injury", note_text: str = ""):
+    from .nlp_foundations import ClinicalTFIDF
+    from .verify import sentences_of
+    if not note_text:
+        from .data_gen import ensure_corpus
+        corpus = ensure_corpus()
+        note_text = corpus[0]["text"]
+    sents = sentences_of(note_text)
+    tfidf = ClinicalTFIDF(sents)
+    results = tfidf.query(query, top_k=3)
+    return {
+        "query": query,
+        "top_grounding_sentences": results,
+        "total_sentences_indexed": len(sents)
+    }
+
+
+@app.get("/api/nlp/negation-paradox")
+def get_negation_paradox():
+    from .nlp_foundations import explain_negation_paradox
+    return explain_negation_paradox()
+
+
 @app.post("/extract", response_model=ExtractionResponse)
 def extract(body: ExtractRequest) -> ExtractionResponse:
     if SERVICE.pipe is None:

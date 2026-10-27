@@ -8,13 +8,15 @@ import {
   BookOpen, 
   ExternalLink,
   Cpu,
-  UserCheck
+  UserCheck,
+  Binary
 } from 'lucide-react';
 
 export default function Sidebar() {
   const navItems = [
     { to: '/', label: 'Patient Encounters', icon: Users, badge: '4' },
     { to: '/audit', label: 'Clinical Auditor', icon: ShieldCheck, badge: 'Live' },
+    { to: '/nlp-lab', label: 'NLP Foundations Lab', icon: Binary, badge: 'Theory' },
     { to: '/analytics', label: 'Telemetry & GPU Benchmarks', icon: Activity },
     { to: '/settings', label: 'Safety Policy & Config', icon: Sliders },
     { to: '/viva-guide', label: 'Examiner Defense Manual', icon: BookOpen, highlight: true },

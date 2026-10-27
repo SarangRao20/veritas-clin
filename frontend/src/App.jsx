@@ -6,6 +6,7 @@ import AuditPage from './pages/AuditPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import VivaGuidePage from './pages/VivaGuidePage';
+import NlpLabPage from './pages/NlpLabPage';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<EncountersPage />} />
             <Route path="/audit" element={<AuditPage />} />
+            <Route path="/nlp-lab" element={<NlpLabPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/viva-guide" element={<VivaGuidePage />} />
