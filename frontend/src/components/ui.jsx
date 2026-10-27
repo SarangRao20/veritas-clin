@@ -1,62 +1,35 @@
-/** Shared UI primitives. Small set, used by every page for consistency.
+/**
+ * UI primitives.
  *
- * Design contract (see frontend/README.md):
- * - neutrals only (zinc) for chrome; one blue accent; color labels clinical state
- * - white panels, 1px zinc-200 border, 6px radius, no top accent bars, no gradients
- * - type scale: 11 (fine print) / 12 (labels, meta) / 13 (data) / 14 (body) / 16 / 20 (page h1)
- * - mono reserved for identifiers and numeric scores
+ * Design rules:
+ *  - zinc neutrals only for chrome; blue-600 is the single accent
+ *  - white panels, 1px zinc-200 border, rounded-md
+ *  - type: 11 (meta/labels), 12 (secondary), 13 (data/body), 20 (page title)
+ *  - mono for numbers and identifiers
+ *  - no color for decoration — color only carries meaning
  */
-import React from 'react';
 import clsx from 'clsx';
 
-const CHIP_TONES = {
-  zinc: 'bg-zinc-100 text-zinc-600 border-zinc-200',
-  blue: 'bg-blue-50 text-blue-700 border-blue-200',
-  emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  amber: 'bg-amber-50 text-amber-800 border-amber-200',
-  red: 'bg-red-50 text-red-700 border-red-200',
-};
-
-export function Chip({ tone = 'zinc', dot = false, children, className }) {
+/* ── Stat block ─────────────────────────────────────────────────────────── */
+export function Stat({ label, value, sub, mono = true }) {
   return (
-    <span
-      className={clsx(
-        'inline-flex items-center gap-1.5 border rounded px-1.5 py-0.5 text-[11px] font-medium',
-        CHIP_TONES[tone],
-        className,
-      )}
-    >
-      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />}
-      {children}
-    </span>
+    <div className="bg-white border border-zinc-200 rounded-md px-4 py-3 min-w-0">
+      <div className="text-[11px] uppercase tracking-wide text-zinc-500 truncate">{label}</div>
+      <div className={clsx('mt-1 text-[22px] font-semibold leading-tight text-zinc-900', mono && 'font-mono')}>
+        {value}
+      </div>
+      {sub && <div className="mt-0.5 text-[11px] text-zinc-400 truncate">{sub}</div>}
+    </div>
   );
 }
 
-export const DECISION_LABELS = {
-  accept: { tone: 'emerald', label: 'Auto-accepted' },
-  flag_for_review: { tone: 'amber', label: 'Physician review' },
-  abstain: { tone: 'zinc', label: 'Held back' },
-};
-
-export function DecisionChip({ decision }) {
-  const d = DECISION_LABELS[decision] ?? { tone: 'zinc', label: decision };
-  return <Chip tone={d.tone} dot>{d.label}</Chip>;
-}
-
-const TYPE_LABELS = { diagnosis: 'Diagnosis', medication: 'Medication', followup: 'Follow-up' };
-
-export function TypeChip({ type }) {
-  const tone = { diagnosis: 'blue', medication: 'emerald', followup: 'amber' }[type] ?? 'zinc';
-  return <Chip tone={tone}>{TYPE_LABELS[type] ?? type}</Chip>;
-}
-
-/** Minimal flat panel. */
+/* ── Panel ───────────────────────────────────────────────────────────────── */
 export function Panel({ title, sub, actions, children, className }) {
   return (
-    <section className={clsx('min-w-0 bg-white border border-zinc-200 rounded-md', className)}>
+    <section className={clsx('bg-white border border-zinc-200 rounded-md min-w-0', className)}>
       {(title || actions) && (
         <header className="flex items-start justify-between gap-3 px-4 py-3 border-b border-zinc-200">
-          <div>
+          <div className="min-w-0">
             {title && <h2 className="text-[13px] font-semibold text-zinc-900">{title}</h2>}
             {sub && <p className="mt-0.5 text-[12px] text-zinc-500">{sub}</p>}
           </div>
@@ -68,64 +41,38 @@ export function Panel({ title, sub, actions, children, className }) {
   );
 }
 
-export function Stat({ label, value, sub }) {
+/* ── Page header ─────────────────────────────────────────────────────────── */
+export function PageHeader({ title, sub }) {
   return (
-    <div className="bg-white border border-zinc-200 rounded-md px-4 py-3">
-      <div className="text-[11px] uppercase tracking-wide text-zinc-500">{label}</div>
-      <div className="mt-1 text-[20px] font-semibold text-zinc-900 leading-tight">{value}</div>
-      {sub && <div className="mt-0.5 text-[12px] text-zinc-500">{sub}</div>}
+    <div className="mb-6">
+      <h1 className="text-[20px] font-semibold text-zinc-900 leading-tight">{title}</h1>
+      {sub && <p className="mt-1 text-[13px] text-zinc-500 max-w-2xl leading-relaxed">{sub}</p>}
     </div>
   );
 }
 
-/** Horizontal score bar with a tick marking the decision threshold tau*. */
-export function ScoreBar({ score, threshold }) {
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+export function Spinner({ size = 'sm' }) {
   return (
-    <div className="relative h-1.5 w-24 rounded-full bg-zinc-200" title={`score ${score} · tau* ${threshold}`}>
-      <div
-        className="absolute inset-y-0 left-0 rounded-full bg-blue-600"
-        style={{ width: `${Math.min(100, score * 100)}%` }}
-      />
-      {threshold > 0 && threshold < 1 && (
-        <div
-          className="absolute inset-y-[-3px] w-px bg-zinc-500"
-          style={{ left: `${threshold * 100}%` }}
-        />
-      )}
-    </div>
+    <svg
+      className={clsx('animate-spin text-zinc-400', size === 'sm' ? 'h-4 w-4' : 'h-6 w-6')}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
   );
 }
 
-export function PageHeader({ eyebrow, title, sub }) {
-  return (
-    <div className="mb-5">
-      {eyebrow && (
-        <div className="text-[11px] uppercase tracking-wide text-zinc-500">{eyebrow}</div>
-      )}
-      <h1 className="text-[20px] font-semibold text-zinc-900">{title}</h1>
-      {sub && <p className="mt-1 text-[13px] text-zinc-500 max-w-3xl">{sub}</p>}
-    </div>
-  );
-}
-
-export function Spinner({ label = 'Loading' }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-[12px] text-zinc-500">
-      <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-        <path className="opacity-80" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-      </svg>
-      {label}
-    </span>
-  );
-}
-
-export function ErrorNote({ error, onRetry }) {
+/* ── Error inline ────────────────────────────────────────────────────────── */
+export function Err({ message, onRetry }) {
   return (
     <div className="flex items-center justify-between gap-3 border border-red-200 bg-red-50 rounded-md px-3 py-2 text-[12px] text-red-700">
-      <span>{error?.message ?? 'Request failed'}</span>
+      <span>{message ?? 'Request failed.'}</span>
       {onRetry && (
-        <button onClick={onRetry} className="underline underline-offset-2 hover:no-underline">
+        <button onClick={onRetry} className="underline underline-offset-2 hover:no-underline shrink-0">
           Retry
         </button>
       )}
@@ -133,15 +80,86 @@ export function ErrorNote({ error, onRetry }) {
   );
 }
 
-/** Central number formatting so every page looks identical. */
+/* ── Tag / badge ─────────────────────────────────────────────────────────── */
+const TAG_STYLES = {
+  zinc:    'bg-zinc-100 text-zinc-600',
+  blue:    'bg-blue-50  text-blue-700',
+  emerald: 'bg-emerald-50 text-emerald-700',
+  amber:   'bg-amber-50 text-amber-700',
+  red:     'bg-red-50 text-red-700',
+};
+
+export function Tag({ tone = 'zinc', children }) {
+  return (
+    <span className={clsx('inline-block rounded px-1.5 py-0.5 text-[11px] font-medium', TAG_STYLES[tone])}>
+      {children}
+    </span>
+  );
+}
+
+/* ── Button ──────────────────────────────────────────────────────────────── */
+export function Btn({ children, onClick, disabled, loading, variant = 'primary', className }) {
+  const base = 'inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-[13px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
+  const styles = {
+    primary: 'bg-blue-600 text-white hover:bg-blue-700',
+    ghost:   'bg-transparent text-zinc-600 hover:bg-zinc-100',
+    outline: 'border border-zinc-200 text-zinc-700 hover:bg-zinc-50',
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={clsx(base, styles[variant], className)}
+    >
+      {loading && <Spinner size="sm" />}
+      {children}
+    </button>
+  );
+}
+
+/* ── Mini bar (for vector component visualization) ───────────────────────── */
+export function MiniBar({ value, max = 1, label }) {
+  const pct = Math.min(100, (Math.abs(value) / (max || 1)) * 100);
+  const neg = value < 0;
+  return (
+    <div className="flex items-center gap-2 text-[11px]">
+      {label && <span className="w-20 truncate text-zinc-500 shrink-0 font-mono">{label}</span>}
+      <div className="flex-1 h-1.5 bg-zinc-100 rounded-full overflow-hidden">
+        <div
+          className={clsx('h-full rounded-full', neg ? 'bg-amber-400' : 'bg-blue-500')}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-12 text-right text-zinc-600 font-mono shrink-0">
+        {value.toFixed(3)}
+      </span>
+    </div>
+  );
+}
+
+/* ── Confusion matrix cell ───────────────────────────────────────────────── */
+export function CMCell({ value, max }) {
+  const intensity = max > 0 ? value / max : 0;
+  const bg = `rgba(37,99,235,${(intensity * 0.7).toFixed(2)})`;
+  const fg = intensity > 0.55 ? '#fff' : '#18181b';
+  return (
+    <td
+      className="text-center text-[12px] font-mono px-2 py-1.5 border border-zinc-100 transition-colors"
+      style={{ backgroundColor: bg, color: fg, minWidth: '2.5rem' }}
+    >
+      {value}
+    </td>
+  );
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+export function Divider() {
+  return <hr className="border-t border-zinc-200 my-4" />;
+}
+
+/* ── Number formatter ────────────────────────────────────────────────────── */
 export const fmt = {
-  pct(x, digits = 1) {
-    return `${(x * 100).toFixed(digits)}%`;
-  },
-  num(x) {
-    return Number(x).toLocaleString('en-US');
-  },
-  round(x, digits = 4) {
-    return Number(x).toFixed(digits);
-  },
+  pct: (x, d = 1) => `${(x * 100).toFixed(d)}%`,
+  num: (x) => Number(x).toLocaleString('en-US'),
+  f: (x, d = 3) => Number(x).toFixed(d),
 };

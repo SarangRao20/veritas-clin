@@ -1,65 +1,54 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import clsx from 'clsx';
-import { getHealth } from '../api';
-import { Spinner } from './ui';
 
 const NAV = [
-  { to: '/', label: 'Encounters', end: true },
-  { to: '/audit', label: 'Audit' },
-  { to: '/analytics', label: 'Analytics' },
-  { to: '/nlp-lab', label: 'NLP foundations' },
-  { to: '/settings', label: 'Settings' },
-  { to: '/viva-guide', label: 'Viva guide' },
+  { to: '/',           label: 'Overview',   end: true },
+  { to: '/corpus',     label: 'Corpus' },
+  { to: '/embeddings', label: 'Embeddings' },
+  { to: '/evaluation', label: 'Evaluation' },
+  { to: '/about',      label: 'About' },
 ];
 
-function EngineStatus() {
-  const [health, setHealth] = useState(null);
-  const [failed, setFailed] = useState(false);
-
+function ApiDot() {
+  const [ok, setOk] = useState(null);
   useEffect(() => {
-    let alive = true;
-    const probe = () =>
-      getHealth()
-        .then((h) => alive && (setHealth(h), setFailed(false)))
-        .catch(() => alive && setFailed(true));
-    probe();
-    const t = setInterval(probe, 15000);
-    return () => { alive = false; clearInterval(t); };
+    let live = true;
+    const check = () =>
+      fetch('/health')
+        .then((r) => { if (live) setOk(r.ok); })
+        .catch(() => { if (live) setOk(false); });
+    check();
+    const t = setInterval(check, 20000);
+    return () => { live = false; clearInterval(t); };
   }, []);
 
-  if (failed) {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-        <span className="text-[11px] text-zinc-500">API offline</span>
-      </span>
-    );
-  }
-  if (!health) return <Spinner label="Checking API" />;
+  if (ok === null) return null;
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-      <span className="text-[11px] text-zinc-500">
-        {health.extractor} extractor · NLI {health.extractor === 'hf' ? 'ready' : 'not loaded'}
-      </span>
+    <span className="flex items-center gap-1.5">
+      <span className={clsx('h-1.5 w-1.5 rounded-full', ok ? 'bg-emerald-500' : 'bg-red-500')} />
+      <span className="text-[11px] text-zinc-400">{ok ? 'API' : 'API offline'}</span>
     </span>
   );
 }
 
-/** Top navigation bar + content column. Replaces the old fixed sidebar. */
 export default function AppShell({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-zinc-200">
-        <div className="max-w-6xl mx-auto px-6 flex items-center h-12 gap-3">
-          <NavLink to="/" className="text-[13px] font-semibold text-zinc-900 whitespace-nowrap">
-            Veritas-Clin
-          </NavLink>
-          <span className="text-[11px] text-zinc-400 whitespace-nowrap hidden lg:inline">
-            Evidence-grounded clinical extraction
+      {/* Top bar */}
+      <header className="bg-white border-b border-zinc-200 sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-5 flex items-center h-11 gap-4">
+          {/* Wordmark */}
+          <span className="text-[13px] font-semibold text-zinc-900 shrink-0">
+            ClinNLP
           </span>
-          <nav className="ml-2 min-w-0 flex items-center gap-1 h-12 overflow-x-auto">
+          <span className="text-[11px] text-zinc-300 hidden sm:inline shrink-0">|</span>
+          <span className="text-[11px] text-zinc-400 hidden sm:inline shrink-0 truncate">
+            Word2Vec · GloVe · Clinical classification
+          </span>
+
+          {/* Nav */}
+          <nav className="flex items-center h-11 ml-auto overflow-x-auto">
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
@@ -67,10 +56,10 @@ export default function AppShell({ children }) {
                 end={item.end}
                 className={({ isActive }) =>
                   clsx(
-                    'h-full flex items-center px-3 text-[13px] border-b-2 -mb-px whitespace-nowrap transition-colors',
+                    'h-full flex items-center px-3 text-[12px] border-b-2 transition-colors whitespace-nowrap',
                     isActive
                       ? 'border-blue-600 text-zinc-900 font-medium'
-                      : 'border-transparent text-zinc-500 hover:text-zinc-900',
+                      : 'border-transparent text-zinc-500 hover:text-zinc-800',
                   )
                 }
               >
@@ -78,17 +67,26 @@ export default function AppShell({ children }) {
               </NavLink>
             ))}
           </nav>
-          <div className="ml-auto shrink-0">
-            <EngineStatus />
+
+          <div className="ml-3 shrink-0">
+            <ApiDot />
           </div>
         </div>
       </header>
-      <main className="flex-1 w-full">
-        <div className="max-w-6xl mx-auto px-6 py-6">{children}</div>
+
+      {/* Content */}
+      <main className="flex-1">
+        <div className="max-w-5xl mx-auto px-5 py-7">{children}</div>
       </main>
-      <footer className="max-w-6xl mx-auto w-full px-6 py-4 text-[11px] text-zinc-400">
-        Backend: FastAPI (serve.py) · the NLI cross-encoder loads only in the HF runtime ·
-        benchmark artifacts served from /artifacts
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-100 mt-8">
+        <div className="max-w-5xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+          <span className="text-[11px] text-zinc-400">
+            Synthetic corpus · PICT NLP coursework · not for clinical use
+          </span>
+          <span className="text-[11px] text-zinc-300">FastAPI + React</span>
+        </div>
       </footer>
     </div>
   );

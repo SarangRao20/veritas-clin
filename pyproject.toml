@@ -17,6 +17,10 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "matplotlib>=3.8",
     "pytest>=8.0",
+    "numpy>=1.26",
+    "nltk>=3.9",
+    "spacy>=3.8",
+    "python-crfsuite>=0.9.10",
 ]
 
 [tool.setuptools.packages.find]

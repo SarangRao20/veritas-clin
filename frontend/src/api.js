@@ -1,58 +1,31 @@
-/**
- * API layer. Every function hits the live FastAPI service — no mocked data.
- * Errors are surfaced as plain `Error` with the server's detail when present.
- */
-export async function getJSON(url) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.detail) detail = body.detail;
-    } catch { /* not json */ }
-    throw new Error(detail);
-  }
-  return res.json();
+const BASE = import.meta.env.VITE_API_BASE ?? '';
+
+async function get(path) {
+  const r = await fetch(`${BASE}${path}`);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
 }
 
-export const getHealth = () => getJSON('/health');
-export const getNotes = () => getJSON('/api/notes');
-export const getMetrics = () => getJSON('/api/metrics');
-
-export const getZipf = () => getJSON('/api/nlp/zipf');
-export const getParadox = () => getJSON('/api/nlp/negation-paradox');
-export const getBPE = (word) =>
-  getJSON(`/api/nlp/bpe?word=${encodeURIComponent(word)}`);
-export async function getTfIdf(query, noteText) {
-  const res = await fetch('/api/nlp/tfidf', {
+async function post(path, body) {
+  const r = await fetch(`${BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, note_text: noteText }),
+    body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.detail) detail = body.detail;
-    } catch { /* not json */ }
-    throw new Error(detail);
+  if (!r.ok) {
+    const msg = await r.text().catch(() => r.statusText);
+    throw new Error(msg || `${r.status}`);
   }
-  return res.json();
+  return r.json();
 }
 
-export async function runExtract(noteId, noteText) {
-  const res = await fetch('/extract', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ note_id: noteId, note_text: noteText }),
-  });
-  if (!res.ok) {
-    let detail = `HTTP ${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.detail) detail = body.detail;
-    } catch { /* not json */ }
-    throw new Error(detail);
-  }
-  return res.json();
-}
+export const api = {
+  health:       () => get('/health'),
+  overview:     () => get('/api/overview'),
+  corpus:       () => get('/api/corpus'),
+  train:        (model) => post('/api/train', { model }),
+  neighbors:    (model, word, n = 10) => post('/api/neighbors', { model, word, top_n: n }),
+  noteVector:   (model, text) => post('/api/note-vector', { model, text }),
+  evaluation:   () => get('/api/evaluation'),
+  trainStatus:  () => get('/api/train-status'),
+};
