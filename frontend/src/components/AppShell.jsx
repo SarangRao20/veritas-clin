@@ -5,7 +5,7 @@ import clsx from 'clsx';
 const NAV = [
   { to: '/',        label: 'Overview',  end: true },
   { to: '/explore', label: 'Explore' },
-  { to: '/predict', label: 'Predict' },
+  { to: '/predict', label: 'Triage' },
   { to: '/results', label: 'Results' },
   { to: '/about',   label: 'About' },
 ];

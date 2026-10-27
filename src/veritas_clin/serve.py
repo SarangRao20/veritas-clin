@@ -308,6 +308,185 @@ def api_predict(body: dict):
 
 
 # ---------------------------------------------------------------------------
+# /api/explain  (POST {"text": "...", "model": "word2vec|glove|tfidf"})
+# Returns per-token contribution scores + triage recommendation
+# ---------------------------------------------------------------------------
+
+# PHQ-9 symptom keyword mapping (DSM-5 criteria A–I)
+_PHQ9_MAP = {
+    "depressed":   "A – depressed mood",
+    "sad":         "A – depressed mood",
+    "hopeless":    "A – depressed mood",
+    "empty":       "A – depressed mood",
+    "worthless":   "G – feelings of worthlessness",
+    "guilty":      "G – feelings of worthlessness",
+    "failure":     "G – feelings of worthlessness",
+    "sleep":       "C – sleep disturbance",
+    "insomnia":    "C – sleep disturbance",
+    "tired":       "D – fatigue or loss of energy",
+    "exhausted":   "D – fatigue or loss of energy",
+    "energy":      "D – fatigue or loss of energy",
+    "appetite":    "E – appetite/weight change",
+    "eating":      "E – appetite/weight change",
+    "concentrate": "F – difficulty concentrating",
+    "focus":       "F – difficulty concentrating",
+    "interest":    "B – loss of interest (anhedonia)",
+    "enjoy":       "B – loss of interest (anhedonia)",
+    "pleasure":    "B – loss of interest (anhedonia)",
+    "die":         "I – suicidal ideation",
+    "death":       "I – suicidal ideation",
+    "suicide":     "I – suicidal ideation",
+    "kill":        "I – suicidal ideation",
+    "disappear":   "I – suicidal ideation",
+    "numb":        "A – depressed mood",
+    "trapped":     "A – depressed mood",
+    "alone":       "A – depressed mood",
+    "isolated":    "A – depressed mood",
+    "crying":      "A – depressed mood",
+    "tears":       "A – depressed mood",
+    "slow":        "H – psychomotor changes",
+    "moving":      "H – psychomotor changes",
+}
+
+def _triage(p_dep: float) -> dict:
+    if p_dep >= 0.80:
+        return {
+            "level":  "High risk",
+            "action": "Refer for full PHQ-9 assessment and psychiatric consultation.",
+            "color":  "red",
+        }
+    elif p_dep >= 0.55:
+        return {
+            "level":  "Moderate risk",
+            "action": "Administer PHQ-9 at next appointment and follow up within 2 weeks.",
+            "color":  "amber",
+        }
+    else:
+        return {
+            "level":  "Low risk",
+            "action": "Routine review. Re-screen if symptoms persist beyond 2 weeks.",
+            "color":  "emerald",
+        }
+
+
+@app.post("/api/explain")
+def api_explain(body: dict):
+    from .depression_nlp import preprocess, predict_text
+    import numpy as np
+
+    text  = (body.get("text") or "").strip()
+    model = (body.get("model") or "word2vec").lower()
+    if not text:
+        raise HTTPException(400, "text is required")
+
+    # Base prediction
+    pred = predict_text(text, model, _STATE["clf"], _STATE["w2v"],
+                        _STATE["glove"], _STATE["tfidf_vec"])
+    if "error" in pred:
+        raise HTTPException(400, pred["error"])
+
+    tokens = preprocess(text)
+
+    # Token-level contribution via TF-IDF LR coefficients (always available,
+    # interpretable regardless of which embedding model is selected)
+    contributions = []
+    tfidf_vec = _STATE["tfidf_vec"]
+    clf_tfidf  = _STATE["clf"].get("tfidf")
+    if tfidf_vec and clf_tfidf is not None:
+        fn    = tfidf_vec.get_feature_names_out()
+        coef  = clf_tfidf.coef_[0]           # positive = depressive
+        vocab = {w: i for i, w in enumerate(fn)}
+        for tok in tokens:
+            if tok in vocab:
+                contributions.append({
+                    "token": tok,
+                    "score": round(float(coef[vocab[tok]]), 4),
+                    "phq9":  _PHQ9_MAP.get(tok),
+                })
+        contributions.sort(key=lambda x: abs(x["score"]), reverse=True)
+
+    # PHQ-9 symptoms detected in this text
+    phq9_hits = {}
+    for tok in tokens:
+        if tok in _PHQ9_MAP:
+            criterion = _PHQ9_MAP[tok]
+            if criterion not in phq9_hits:
+                phq9_hits[criterion] = []
+            phq9_hits[criterion].append(tok)
+
+    # Model comparison (word2vec vs glove vs tfidf)
+    comparison = []
+    for m in ("word2vec", "glove", "tfidf"):
+        r = predict_text(text, m, _STATE["clf"], _STATE["w2v"],
+                         _STATE["glove"], _STATE["tfidf_vec"])
+        if "error" not in r:
+            comparison.append({
+                "model":        m,
+                "label":        r["label_name"],
+                "p_depressive": r["p_depressive"],
+                "confidence":   r["confidence"],
+            })
+
+    # Detect disagreement
+    labels = [c["label"] for c in comparison]
+    disagreement = len(set(labels)) > 1
+
+    return {
+        **pred,
+        "tokens":       tokens,
+        "contributions": contributions[:20],
+        "phq9_hits":    phq9_hits,
+        "triage":       _triage(pred["p_depressive"]),
+        "comparison":   comparison,
+        "disagreement": disagreement,
+    }
+
+
+# ---------------------------------------------------------------------------
+# /api/batch  (POST {"notes": ["text1", "text2", ...], "model": "word2vec"})
+# ---------------------------------------------------------------------------
+
+@app.post("/api/batch")
+def api_batch(body: dict):
+    from .depression_nlp import predict_text
+    raw_notes = body.get("notes") or []
+    model     = (body.get("model") or "word2vec").lower()
+    if not raw_notes:
+        raise HTTPException(400, "notes list is required")
+    if len(raw_notes) > 50:
+        raise HTTPException(400, "maximum 50 notes per batch")
+
+    results = []
+    for i, text in enumerate(raw_notes):
+        text = (text or "").strip()
+        if not text:
+            continue
+        pred = predict_text(text, model, _STATE["clf"], _STATE["w2v"],
+                            _STATE["glove"], _STATE["tfidf_vec"])
+        if "error" in pred:
+            continue
+        # Map PHQ-9 hits
+        from .depression_nlp import preprocess
+        tokens = preprocess(text)
+        phq9 = list({_PHQ9_MAP[t] for t in tokens if t in _PHQ9_MAP})
+        triage = _triage(pred["p_depressive"])
+        results.append({
+            "index":        i,
+            "preview":      text[:80],
+            "label":        pred["label_name"],
+            "p_depressive": pred["p_depressive"],
+            "triage_level": triage["level"],
+            "triage_color": triage["color"],
+            "phq9_count":   len(phq9),
+            "phq9_hits":    phq9[:3],
+        })
+
+    # Sort by risk descending
+    results.sort(key=lambda r: r["p_depressive"], reverse=True)
+    return {"model": model, "count": len(results), "results": results}
+
+
+# ---------------------------------------------------------------------------
 # Legacy /extract for existing tests
 # ---------------------------------------------------------------------------
 

@@ -28,4 +28,6 @@ export const api = {
   results:     () => get('/api/results'),
   neighbors:   (model, word, n = 10) => post('/api/neighbors', { model, word, top_n: n }),
   predict:     (text, model) => post('/api/predict', { text, model }),
+  explain:     (text, model) => post('/api/explain', { text, model }),
+  batch:       (notes, model) => post('/api/batch', { notes, model }),
 };
