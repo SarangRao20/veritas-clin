@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veritas-Clin | Evidence-Grounded Clinical Extraction Studio</title>
+  
+  <!-- Google Fonts: Figtree (Geometric Sans) & JetBrains Mono (Clinical Monospace) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Three.js (r128) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Studio Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Telemetry & Brand Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <a href="#" class="brand-logo">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2v20M2 12h20M4.93 4.93l14.14 14.14M4.93 19.07l14.14-14.14"/>
+        </svg>
+        <span class="brand-title">
+          Veritas-Clin
+          <span class="brand-badge">Clinical Telemetry v0.1</span>
+        </span>
+      </a>
+
+      <div class="telemetry-pills">
+        <div class="telemetry-item">
+          <span class="status-dot pulsing"></span>
+          <span>GPU Benchmark: T4 (582s)</span>
+        </div>
+        <div class="telemetry-item">
+          <span>Dual Architecture: Qwen2.5-3B + DeBERTa-v3</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-actions">
+      <button class="btn-secondary" id="btn-open-telemetry">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        Benchmark Telemetry
+      </button>
+
+      <a href="https://github.com/SarangRao20/veritas-clin" target="_blank" rel="noopener noreferrer" class="btn-secondary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+        </svg>
+        GitHub
+      </a>
+
+      <button class="btn-primary" id="btn-run-extract">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+        Run Verification
+      </button>
+    </div>
+  </header>
+
+  <!-- 3-Column Studio Cockpit Grid -->
+  <main class="studio-container">
+
+    <!-- Column 1: Clinical EHR Note & Span Annotator -->
+    <section class="panel panel-left">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <span class="panel-title">Clinical Note</span>
+          <span class="brand-badge" id="patient-id-display">VS-002</span>
+        </div>
+
+        <select class="preset-selector" id="preset-select">
+          <option value="preset_aki_trap">Case 1: AKI + Rule-Out Trap</option>
+          <option value="preset_chf">Case 2: Heart Failure Polypharmacy</option>
+          <option value="preset_allergy_trap">Case 3: Pneumonia + Allergy Trap</option>
+        </select>
+      </div>
+
+      <div class="panel-body">
+        <div class="note-wrapper">
+          <div class="trap-alert">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+              <line x1="12" y1="9" x2="12" y2="13"></line>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <div>
+              <strong>Adversarial Modality Test:</strong> Contains negated findings (e.g. <em>"ruled out"</em>) & distractor history. Observe how NLI verification abstains from ungrounded claims.
+            </div>
+          </div>
+
+          <div class="note-editor-container">
+            <!-- Rendered View with Interactive Span Highlight Pills -->
+            <div class="note-highlighted-view" id="note-highlight-display"></div>
+            <!-- Raw Textarea for ad-hoc user edits -->
+            <textarea class="note-textarea" id="note-raw-textarea" style="display: none;"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Column 2: Center Stage - Three.js 3D Evidence Manifold -->
+    <section class="stage-panel">
+      <div class="stage-toolbar">
+        <div class="stage-badge-group">
+          <div class="stage-badge">3D Evidence & Grounding Manifold (Three.js)</div>
+        </div>
+        <div class="stage-actions">
+          <button class="stage-btn" id="btn-reset-cam" title="Reset Camera Perspective">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="three-canvas-container" id="three-container">
+        <canvas id="three-canvas"></canvas>
+      </div>
+
+      <div class="manifold-legend">
+        <div class="legend-item">
+          <span class="legend-swatch accept"></span>
+          <span>Accepted (Score ≥ τ*)</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch flag"></span>
+          <span>Review Band</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-swatch abstain"></span>
+          <span>Abstained / Contradicted</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Column 3: Calibrated Clinical Claims Feed -->
+    <section class="panel panel-right">
+      <div class="panel-header">
+        <div class="panel-title-group">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2">
+            <polyline points="9 11 12 14 22 4"></polyline>
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+          </svg>
+          <span class="panel-title">Extracted Claims & Decisions</span>
+        </div>
+      </div>
+
+      <div class="panel-body">
+        <div class="claims-summary-bar">
+          <div class="stat-chip accept">
+            <div class="stat-chip-label">Accepted</div>
+            <div class="stat-chip-val" id="stat-accept-count">0</div>
+          </div>
+          <div class="stat-chip flag">
+            <div class="stat-chip-label">Review</div>
+            <div class="stat-chip-val" id="stat-flag-count">0</div>
+          </div>
+          <div class="stat-chip abstain">
+            <div class="stat-chip-label">Abstained</div>
+            <div class="stat-chip-val" id="stat-abstain-count">0</div>
+          </div>
+        </div>
+
+        <div class="claims-list" id="claims-list">
+          <!-- Dynamically populated cards -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Control Deck & Decision Threshold Scrubber -->
+  <footer class="control-deck">
+    <div class="threshold-control">
+      <span class="threshold-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        Abstention Cutoff (&tau;*):
+      </span>
+      <div class="threshold-slider-wrapper">
+        <input type="range" min="0.10" max="0.95" step="0.01" value="0.35" class="tau-slider" id="tau-slider">
+        <span class="tau-val-badge" id="tau-val-display">0.35</span>
+      </div>
+    </div>
+
+    <div class="deck-stats">
+      <div class="deck-stat-item">
+        Chart Coverage: <strong id="deck-coverage-val">90.7%</strong>
+      </div>
+      <div class="deck-stat-item">
+        Hallucination Guard: <strong id="deck-flagged-val">56.2% captured</strong>
+      </div>
+      <div class="deck-stat-item">
+        Accepted Precision: <strong style="color: #34d399;">92.9%</strong>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Empirical Benchmark Telemetry Modal -->
+  <div class="modal-backdrop" id="telemetry-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="panel-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          Colab T4 GPU Empirical Evaluation Telemetry
+        </div>
+        <button class="close-btn" id="btn-close-modal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 0.84rem; color: #94a3b8; line-height: 1.6;">
+          Evaluated across 40 annotated notes (20 Dev / 20 Test) using <strong>Qwen2.5-3B-Instruct</strong> (fp16) for extraction and <strong>DeBERTa-v3-base-mnli-fever-anli</strong> for verification. Decision threshold (&tau;* = 0.3499) was optimized on Dev and frozen for Test.
+        </p>
+
+        <div class="plot-grid">
+          <div class="plot-card">
+            <strong style="font-size: 0.78rem; font-family: var(--font-mono); color: #cbd5e1;">Reliability Diagram (Dev ECE: 0.1500)</strong>
+            <img src="../artifacts/plots/calibration.png" alt="Calibration Reliability Diagram" onerror="this.src='https://placehold.co/400x300/121a2b/22d3ee?text=Calibration+Curve'">
+          </div>
+          <div class="plot-card">
+            <strong style="font-size: 0.78rem; font-family: var(--font-mono); color: #cbd5e1;">Selective Risk vs Coverage Curve (Test Split)</strong>
+            <img src="../artifacts/plots/risk_coverage.png" alt="Risk-Coverage Trade-off Curve" onerror="this.src='https://placehold.co/400x300/121a2b/22d3ee?text=Risk+Coverage+Plot'">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
