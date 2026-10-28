@@ -22,26 +22,13 @@ async function post(path, body) {
 }
 
 export const api = {
-  health:        () => get('/health'),
-  patients:      () => get('/api/patients'),
-  patient:       (id) => get(`/api/patients/${id}`),
-  timeline:      (id) => get(`/api/patients/${id}/timeline`),
-  search:        (query, patient_id, retriever, top_k) =>
-                   post('/api/search', { query, patient_id, retriever, top_k }),
-  compare:       (query, patient_id, top_k) =>
-                   post('/api/search/compare', { query, patient_id, top_k }),
-  symptoms:      () => get('/api/symptoms'),
-  dataset:       () => get('/api/dataset'),
-  trainStatus:   () => get('/api/train-status'),
-  train:         (model) => post('/api/train', { model }),
-  evaluate:      () => get('/api/evaluate'),
-  results:       () => get('/api/results'),
-  neighbors:     (model, word, n = 10) => post('/api/neighbors', { model, word, top_n: n }),
-  predict:       (text, model) => post('/api/predict', { text, model }),
-  explain:       (text, model) => post('/api/explain', { text, model }),
-  batch:         (notes, model) => post('/api/batch', { notes, model }),
-  qa:            (question, patient_id = null, top_k = 6, provider = null, api_key = null) =>
-                   post('/api/qa', { question, patient_id, top_k, provider, api_key }),
-  deidentify:    (text, mode = 'mask') =>
-                   post('/api/deidentify', { text, mode }),
+  health:     () => get('/health'),
+  patients:   () => get('/api/patients'),
+  patient:    (id) => get(`/api/patients/${id}`),
+  timeline:   (id) => get(`/api/patients/${id}/timeline`),
+  qa:         (question, patient_id = null, top_k = 6, provider = null, api_key = null) =>
+                post('/api/qa', { question, patient_id, top_k, provider, api_key }),
+  deidentify: (text, mode = 'mask') =>
+                post('/api/deidentify', { text, mode }),
+  results:    () => get('/api/results'),
 };

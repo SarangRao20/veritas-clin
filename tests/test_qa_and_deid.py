@@ -40,6 +40,29 @@ def test_deidentify_contact_and_identifiers():
     assert "john.doe@health.org" not in res["deidentified_text"]
 
 
+def test_deidentify_bare_name_and_short_date():
+    """Bare leading names and DD-MM-YY dates must be masked (best-effort)."""
+    deid = Deidentifier(custom_names=["Eleanor Vance"])
+    sample = "Sunil recorded on 26-10-26 that he got injured his hand of carelessness"
+    res = deid.deidentify(sample, mode="mask")
+
+    assert "Sunil" not in res["deidentified_text"]
+    assert "[NAME]" in res["deidentified_text"]
+    assert "26-10-26" not in res["deidentified_text"]
+    assert "[DATE]" in res["deidentified_text"]
+    # Clinical meaning (the injury event) is preserved
+    assert "injured his hand" in res["deidentified_text"]
+
+
+def test_deidentify_month_word_not_masked():
+    """'May' as a month word before a reporting verb must not become [NAME]."""
+    deid = Deidentifier()
+    res = deid.deidentify("May reported frequent headaches on 2024-01-15", mode="mask")
+
+    assert "May reported" in res["deidentified_text"]
+    assert "[DATE]" in res["deidentified_text"]
+
+
 def test_deidentify_preserves_medical_terms():
     deid = Deidentifier(custom_names=["Aiden Sharma"])
     sample = "Patient Aiden Sharma was diagnosed with Parkinson's disease and severe insomnia on PHQ-9 scale."
@@ -121,6 +144,39 @@ def test_api_qa_endpoint_with_sbar():
         assert "sbar" in data
         assert "grounded_narrative" in data["sbar"]
         assert len(data["sbar"]["grounded_narrative"]) > 0
+
+
+def test_api_qa_applies_automatic_masking():
+    """Identifiers in the question must be masked before retrieval/model use."""
+    from fastapi.testclient import TestClient
+    from veritas_clin.serve import app
+    with TestClient(app) as client:
+        resp = client.post(
+            "/api/qa",
+            json={"question": "Sunil recorded on 26-10-26 that he got injured his hand"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        deid = data["deidentification"]
+        assert deid["applied"] is True
+        assert deid["scrubbed_count"] >= 2
+        assert "NAME" in deid["types"] and "DATE" in deid["types"]
+        # Raw identifiers must not be echoed back
+        assert "Sunil" not in data["question"]
+        assert "26-10-26" not in data["question"]
+        assert data["deidentification"]["cloud_call"] is not True or deid["applied"]
+
+
+def test_call_cloud_llm_opt_out_none():
+    """Provider 'none'/'None' must bypass cloud calls entirely (fail-closed)."""
+    import os
+    os.environ["GEMINI_API_KEY"] = "fake-key-for-test"
+    try:
+        from veritas_clin.clinical_qa import call_cloud_llm
+        assert call_cloud_llm("any prompt", provider="none", api_key="fake") is None
+        assert call_cloud_llm("any prompt", provider=None, api_key="fake") is None
+    finally:
+        os.environ.pop("GEMINI_API_KEY", None)
 
 
 def test_api_qa_endpoint_with_cloud_provider_params():

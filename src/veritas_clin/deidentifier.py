@@ -52,7 +52,27 @@ DATE_PATTERNS = [
     (re.compile(r"\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(?:19\d\d|20\d\d)\b", re.IGNORECASE), "[DATE]"),
     # Month YYYY (e.g., March 2024)
     (re.compile(r"\b(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+(?:19\d\d|20\d\d)\b", re.IGNORECASE), "[DATE]"),
+    # DD-MM-YY or DD.MM.YY (2-digit year, e.g., 26-10-26)
+    (re.compile(r"\b(0?[1-9]|[12]\d|3[01])[-/.](0?[1-9]|1[0-2])[-/.]\d{2}\b"), "[DATE]"),
 ]
+
+# Conservative contextual capture for bare names at the start of a
+# reporting clause: "Sunil recorded that ...", "Maya reported ...".
+# A capitalized word before a reporting verb is treated as a person's
+# name; ambiguity is disclosed rather than silently ignored.
+REPORTING_VERBS = re.compile(
+    r"(?:(?<=^)|(?<=[.!?]\s))([A-Z][a-z]{2,})\s+"
+    r"(?:recorded|reports?|reported|stated|states|mentioned|mentions|"
+    r"noted|notes|told|says|said|claimed|claims|complains?|complained|"
+    r"denies|denied|describes|described|admits|admitted|reveals|revealed)\b"
+)
+
+# Words that commonly precede reporting verbs but are not personal names
+NON_NAME_LEADS = {
+    "may", "march", "april", "january", "june", "july", "august",
+    "september", "october", "november", "december", "february",
+    "he", "she", "it", "they", "this", "that", "patient", "the",
+}
 
 PHONE_PATTERN = re.compile(
     r"(?:\+?1[-.\s]?)?\(?\b\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b|\bext\.?\s*\d{3,5}\b",
@@ -233,6 +253,20 @@ class Deidentifier:
                         "original": orig,
                         "replacement": "[PATIENT_NAME]" if mode == "mask" else "Patient_A",
                     })
+
+        # 8. Conservative bare-name capture: a capitalized word leading a
+        #    reporting clause ("Sunil recorded that ..."). Ambiguous by
+        #    nature — this is best-effort masking, not certification.
+        for m in REPORTING_VERBS.finditer(text):
+            lead = m.group(1)
+            if lead.lower() in MEDICAL_WHITELIST or lead.lower() in NON_NAME_LEADS:
+                continue
+            entities.append({
+                "type": "NAME",
+                "start": m.start(1), "end": m.end(1),
+                "original": lead,
+                "replacement": "[NAME]" if mode == "mask" else "Individual_A",
+            })
 
         # Resolve overlaps by keeping the longest span
         entities.sort(key=lambda e: (e["start"], -(e["end"] - e["start"])))

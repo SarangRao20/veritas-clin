@@ -329,6 +329,30 @@ def api_clinical_qa(body: dict):
     if not question:
         raise HTTPException(400, "question is required")
 
+    # Automatic de-identification before retrieval or cloud transmission.
+    # Fail closed: if masking cannot be applied, the question must not go
+    # to a cloud provider — fall back to the deterministic evidence path.
+    scrubbed_count = 0
+    scrub_types: list[str] = []
+    masking_applied = False
+    try:
+        deid = _STATE.get("deidentifier")
+        if deid is None:
+            from .deidentifier import Deidentifier
+            corpus, patients = _get_corpus()
+            patient_names = [p["name"] for p in (patients or [])]
+            deid = Deidentifier(custom_names=patient_names)
+            _STATE["deidentifier"] = deid
+        deid_res = deid.deidentify(question, mode="mask")
+        question  = deid_res["deidentified_text"]
+        scrubbed_count = deid_res["scrubbed_count"]
+        scrub_types = sorted({e["type"] for e in deid_res["entities_found"]})
+        masking_applied = True
+    except Exception:
+        # Fail closed: no cloud transmission without verified masking.
+        provider = "none"
+        api_key = None
+
     qa_sys = _STATE.get("qa_system")
     if qa_sys is None:
         from .clinical_qa import ClinicalQASystem
@@ -337,13 +361,23 @@ def api_clinical_qa(body: dict):
         qa_sys = ClinicalQASystem(active_hybrid, corpus, patients or [])
         _STATE["qa_system"] = qa_sys
 
-    return qa_sys.answer_question(
+    result = qa_sys.answer_question(
         question,
         patient_id=patient_id,
         top_k=top_k,
         provider=provider,
         api_key=api_key,
     )
+    # Never echo raw identifiers: the stored/returned question is the
+    # masked text, and only counts/types are reported — not originals.
+    result["question"] = question
+    result["deidentification"] = {
+        "applied": masking_applied,
+        "scrubbed_count": scrubbed_count,
+        "types": scrub_types,
+        "cloud_call": bool(provider and api_key),
+    }
+    return result
 
 
 # ── HIPAA Safe Harbor De-Identification (0528) ──────────────────────────────

@@ -40,6 +40,11 @@ def call_cloud_llm(
     import os
     import httpx
 
+    # Explicit opt-out: provider "none" (or None) means deterministic
+    # synthesis only — used as fail-closed when masking is unavailable.
+    if provider in (None, "none"):
+        return None
+
     # Resolve provider and API key from arguments or environment
     default_prov = os.environ.get("LLM_PROVIDER") or ("gemini" if os.environ.get("GEMINI_API_KEY") else "groq")
     prov = (provider or default_prov).lower()
