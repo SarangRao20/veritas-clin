@@ -28,6 +28,76 @@ QUESTION_STOP = {
 }
 
 
+def call_cloud_llm(
+    prompt: str,
+    provider: str = "groq",
+    api_key: str | None = None,
+    timeout: float = 12.0,
+) -> str | None:
+    """Invokes a cloud LLM (Groq, OpenAI, Gemini) via lightweight HTTP requests (no local LLM)."""
+    import os
+    import httpx
+
+    prov = (provider or "groq").lower()
+    key = api_key or os.environ.get(f"{prov.upper()}_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    if not key:
+        return None
+
+    try:
+        if prov == "groq":
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": "You are a clinical decision support assistant. Synthesize grounded SBAR answers citing [Note ID - Date]."},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+                "max_tokens": 800,
+            }
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"]
+        elif prov == "openai":
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
+            payload = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {"role": "system", "content": "You are a clinical decision support assistant. Synthesize grounded SBAR answers citing [Note ID - Date]."},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+                "max_tokens": 800,
+            }
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.post(url, json=payload, headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data["choices"][0]["message"]["content"]
+        elif prov == "gemini":
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800},
+            }
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.post(url, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            return parts[0].get("text", "")
+    except Exception:
+        return None
+    return None
+
+
 class LLMSynthesizer:
     """Generative Clinical Synthesizer for evidence-grounded SBAR consultation notes."""
 
@@ -56,8 +126,10 @@ class LLMSynthesizer:
         clinical_status: str,
         findings: list[dict],
         citations: list[dict],
+        provider: str = "groq",
+        api_key: str | None = None,
     ) -> dict[str, str]:
-        # If an external LLM callable is provided (HF pipeline, Ollama, API), attempt it
+        # 1. If an explicit callable is provided (tests, local pipeline)
         if self.llm_callable is not None:
             try:
                 prompt = self.build_prompt(question, patient_name, findings, citations)
@@ -71,7 +143,21 @@ class LLMSynthesizer:
                         "grounded_narrative": raw_response.strip(),
                     }
             except Exception:
-                pass  # Fall through to deterministic synthesizer
+                pass
+
+        # 2. If cloud provider / API key is available, call cloud LLM (no local weights needed)
+        prompt = self.build_prompt(question, patient_name, findings, citations)
+        cloud_resp = call_cloud_llm(prompt, provider=provider, api_key=api_key)
+        if cloud_resp and len(cloud_resp.strip()) > 30:
+            return {
+                "situation": f"Patient {patient_name} evaluated regarding \"{question}\" (Provider: {provider.upper()}).",
+                "background": f"Synthesized via {provider.upper()} cloud LLM from {len(citations)} verified citation(s).",
+                "assessment": cloud_resp.strip(),
+                "recommendation": "Grounded clinical synthesis ready for attending physician sign-off.",
+                "grounded_narrative": cloud_resp.strip(),
+            }
+
+        # 3. Deterministic evidence-grounded clinical synthesizer fallback
 
         situation = f"Patient {patient_name} evaluated regarding clinical inquiry: \"{question}\" (Status: {clinical_status})."
 
@@ -172,7 +258,14 @@ class ClinicalQASystem:
 
         return aspects
 
-    def answer_question(self, question: str, patient_id: str | None = None, top_k: int = 6) -> dict[str, Any]:
+    def answer_question(
+        self,
+        question: str,
+        patient_id: str | None = None,
+        top_k: int = 6,
+        provider: str = "groq",
+        api_key: str | None = None,
+    ) -> dict[str, Any]:
         """Answers a clinical diagnostic question grounded strictly in patient notes."""
         clean_q = question.strip()
         if not clean_q:
@@ -386,6 +479,8 @@ class ClinicalQASystem:
             clinical_status=final_status,
             findings=structured_findings,
             citations=citations,
+            provider=provider,
+            api_key=api_key,
         )
 
         return {

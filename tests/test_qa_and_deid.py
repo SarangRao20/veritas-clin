@@ -123,4 +123,19 @@ def test_api_qa_endpoint_with_sbar():
         assert len(data["sbar"]["grounded_narrative"]) > 0
 
 
+def test_llm_synthesizer_cloud_interface_mock():
+    from veritas_clin.clinical_qa import LLMSynthesizer
+    syn = LLMSynthesizer(llm_callable=lambda p: "Clinical synthesis: Patient sleep is disturbed [NOTE_01].")
+    res = syn.synthesize(
+        question="sleep query",
+        patient_name="Eleanor Vance",
+        clinical_status="AFFIRMED",
+        findings=[],
+        citations=[{"note_id": "NOTE_01", "date": "2024-01-15", "sentence": "Sleep disturbed."}]
+    )
+    assert "Clinical synthesis" in res["grounded_narrative"]
+    assert "[NOTE_01]" in res["assessment"] or "[NOTE_01]" in res["grounded_narrative"]
+
+
+
 
