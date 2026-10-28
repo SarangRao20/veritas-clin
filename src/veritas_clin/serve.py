@@ -318,11 +318,13 @@ def api_search_compare(body: dict):
 
 @app.post("/api/qa")
 def api_clinical_qa(body: dict):
+    import os
     question   = (body.get("question") or body.get("query") or "").strip()
     patient_id = body.get("patient_id")
     top_k      = int(body.get("top_k", 6))
-    provider   = body.get("provider", "groq")
-    api_key    = body.get("api_key")
+    default_prov = os.environ.get("LLM_PROVIDER") or ("gemini" if os.environ.get("GEMINI_API_KEY") else "groq")
+    provider   = body.get("provider") or default_prov
+    api_key    = body.get("api_key") or os.environ.get("GEMINI_API_KEY")
 
     if not question:
         raise HTTPException(400, "question is required")

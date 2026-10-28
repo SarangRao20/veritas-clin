@@ -75,28 +75,28 @@ def _sentence_split(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 SYMPTOM_SEEDS: dict[str, list[str]] = {
-    "Sadness":            ["sad", "unhappy", "miserable", "crying", "tears", "low", "gloomy", "feel", "feeling", "feels", "mood", "down", "darkness", "dread"],
-    "Pessimism":          ["hopeless", "future", "pointless", "nothing", "improve", "bleak", "giving up"],
+    "Sadness":            ["sad", "unhappy", "miserable", "crying", "tears", "gloomy", "darkness", "dread", "sorrow", "melancholy", "depressed"],
+    "Pessimism":          ["hopeless", "pointless", "bleak", "giving up", "despair"],
     "Past failure":       ["failure", "failed", "worthless", "mistake", "regret", "blame"],
-    "Loss of pleasure":   ["enjoy", "pleasure", "interest", "fun", "hobby", "music", "numb", "empty", "hollow", "lost", "loss", "pointless", "detached", "disconnected"],
+    "Loss of pleasure":   ["anhedonia", "anhedonic", "pleasure", "interest", "hobby", "numb", "empty", "hollow", "detached", "disconnected", "joyless"],
     "Guilty feelings":    ["guilty", "guilt", "ashamed", "shame", "blame", "fault", "burden"],
     "Punishment":         ["punish", "deserve", "bad", "fault"],
-    "Self-dislike":       ["hate", "myself", "disgust", "ugly", "useless", "loathe"],
-    "Self-criticalness":  ["criticize", "stupid", "idiot", "wrong", "mistake"],
-    "Suicidal ideation":  ["die", "death", "suicide", "kill", "disappear", "end"],
+    "Self-dislike":       ["hate myself", "disgust", "loathe", "self-hatred"],
+    "Self-criticalness":  ["self-critical", "criticize", "incompetent", "inadequate"],
+    "Suicidal ideation":  ["die", "death", "suicide", "suicidal", "kill", "disappear", "end it all", "self-harm"],
     "Crying":             ["cry", "crying", "tears", "sobbing", "weep"],
-    "Agitation":          ["agitated", "irritable", "angry", "upset", "restless", "palpitations"],
-    "Loss of interest":   ["interest", "motivation", "bored", "withdrawn", "avoid", "isolated", "detached"],
-    "Indecisiveness":     ["decide", "decision", "confused", "concentrate", "focus", "foggy", "fog"],
-    "Worthlessness":      ["worthless", "useless", "inferior", "loser", "failure", "burden"],
-    "Loss of energy":     ["tired", "exhausted", "fatigue", "energy", "weak", "drained", "lethargy", "heavy", "limbs", "lead"],
-    "Sleep changes":      ["sleep", "insomnia", "awake", "night", "rest", "waking", "tossing", "restless"],
-    "Irritability":       ["irritable", "annoyed", "angry", "snapping", "short", "frustrated"],
-    "Appetite changes":   ["appetite", "eating", "food", "hungry", "weight", "meal", "loss"],
-    "Concentration":      ["concentrate", "focus", "distracted", "forget", "mind", "sluggish", "brain", "fog", "lapses"],
-    "Rumination & Thoughts": ["thought", "thoughts", "thinking", "mind", "lost", "wandering", "fog", "foggy", "space", "spacing", "rumination", "ruminating", "overthinking", "thick"],
-    "Tiredness":          ["tired", "fatigue", "exhausted", "sluggish", "heavy", "drained", "immobilized"],
-    "Loss of libido":     ["interest", "intimacy", "withdrawn", "isolated", "detached"],
+    "Agitation":          ["agitated", "agitation", "irritable", "restless", "restlessness", "palpitations", "tachycardia", "tremulousness"],
+    "Loss of interest":   ["anhedonia", "motivation", "withdrawn", "isolated", "socially isolated"],
+    "Indecisiveness":     ["indecisive", "indecision", "unable to decide", "vacillating"],
+    "Worthlessness":      ["worthless", "inferior", "chronic burden"],
+    "Loss of energy":     ["exhausted", "fatigue", "lethargy", "leaden limbs", "heavy limbs", "drained of vitality", "profound exhaustion"],
+    "Sleep changes":      ["sleep", "sleeping", "insomnia", "awake", "awakening", "sleep latency", "waking at 3am", "early morning awakening", "sleep maintenance", "nocturnal awakening", "restless sleep"],
+    "Irritability":       ["irritable", "irritability", "snapping", "frustrated"],
+    "Appetite changes":   ["anorexia", "appetite loss", "unintended weight loss", "loss of appetite"],
+    "Concentration":      ["concentration", "concentrate", "distracted", "memory lapses", "brain fog", "cognitive slowing", "cognitive fatigue"],
+    "Rumination & Thoughts": ["rumination", "ruminating", "ruminate", "racing thoughts", "intrusive thoughts", "mind wandering", "thought loops", "lost in thought", "lost in thoughts"],
+    "Tiredness":          ["tired", "fatigue", "exhaustion", "somnolence", "daytime somnolence"],
+    "Loss of libido":     ["libido", "loss of libido", "hypoactive sexual"],
 }
 
 # Diverse clinical sentence pool
@@ -159,45 +159,37 @@ CLINICAL_SENTENCE_POOL = {
 }
 
 
-def generate_patient_corpus(seed: int = 42) -> list[dict]:
+def generate_patient_corpus(seed: int = 42) -> tuple[list[dict], list[dict]]:
+    try:
+        from .data_ingest import load_or_create_clinical_corpus
+        return load_or_create_clinical_corpus()
+    except Exception:
+        pass
+
     import random
     rng = random.Random(seed)
 
     PATIENTS = [
-        {"id": "P001", "name": "Aiden Sharma",    "age": 34, "condition": "Generalised anxiety with low mood"},
-        {"id": "P002", "name": "Maya Patel",      "age": 28, "condition": "Recurrent depressive disorder"},
-        {"id": "P003", "name": "Leon Fischer",    "age": 45, "condition": "Adjustment disorder with insomnia"},
-        {"id": "P004", "name": "Sofia Reyes",     "age": 22, "condition": "First presentation, persistent low mood"},
-        {"id": "P005", "name": "James Okonkwo",   "age": 51, "condition": "Chronic fatigue, low mood"},
+        {"id": "P001", "name": "Eleanor Vance",   "age": 42, "condition": "Major depressive disorder with insomnia"},
+        {"id": "P002", "name": "Marcus Sterling", "age": 29, "condition": "Generalized anxiety with rumination"},
+        {"id": "P003", "name": "Hannah Lin",      "age": 53, "condition": "Neurological fatigue with cognitive fog"},
+        {"id": "P004", "name": "Devon Harris",    "age": 38, "condition": "Somatic symptom disorder with appetite changes"},
     ]
 
     from datetime import date, timedelta
     notes = []
-    base_date = date(2024, 1, 1)
+    base_date = date(2024, 1, 15)
 
     all_categories = list(CLINICAL_SENTENCE_POOL.keys())
 
     for patient in PATIENTS:
-        n_entries = 14
+        n_entries = 4
         for i in range(n_entries):
-            entry_date = base_date + timedelta(days=i * 7)
-            
-            # Select 2-3 distinct categories to draw diverse sentences from
+            entry_date = base_date + timedelta(days=i * 14)
             chosen_sents = []
-            if patient["id"] in ("P001", "P003"):
-                # Prone to sleep & fatigue
-                active_cats = ["sleep", "fatigue", "mood_anhedonia"] if i % 2 == 0 else ["recovery_euthymic", "cognitive"]
-            elif patient["id"] in ("P002", "P004"):
-                # Prone to mood & worthlessness
-                active_cats = ["mood_anhedonia", "worthless_guilt", "sleep"] if i % 2 == 0 else ["recovery_euthymic", "somatic_appetite"]
-            else:
-                active_cats = rng.sample(all_categories, 2)
-
-            for cat in active_cats:
-                pool = CLINICAL_SENTENCE_POOL[cat]
-                sent = pool[i % len(pool)]
-                if sent not in chosen_sents:
-                    chosen_sents.append(sent)
+            pool = CLINICAL_SENTENCE_POOL["mood_anhedonia"] if i % 2 == 0 else CLINICAL_SENTENCE_POOL["sleep"]
+            sent = pool[i % len(pool)]
+            chosen_sents.append(sent)
 
             text = " ".join(chosen_sents)
             notes.append({
@@ -456,12 +448,16 @@ def extract_assertion(sentence: str, match_terms: list[str]) -> str:
     if any(h in words for h in HYPO_WORDS):
         return "HYPOTHETICAL"
 
+    # Clause-level negation check for clinical dictations
+    if any(lower.startswith(p) for p in ("denies", "patient denies", "denied", "no evidence", "rules out", "ruled out", "negative for")):
+        return "NEGATED"
+
     for term in match_terms:
         stemmed_term = _STEMMER.stem(term)
         for j, w in enumerate(words):
             if _STEMMER.stem(w) == stemmed_term or w == term:
-                lo = max(0, j - 3)
-                hi = min(len(words), j + 4)
+                lo = max(0, j - 8)
+                hi = min(len(words), j + 5)
                 if any(words[k] in NEG_WORDS_EXT for k in range(lo, hi)):
                     return "NEGATED"
 
@@ -626,23 +622,9 @@ class BiLSTMRetriever:
 # Dense Sentence-Transformers Semantic Retriever
 # ---------------------------------------------------------------------------
 
-def _expand_clinical_terms(text: str) -> str:
-    """Expands clinical terms with domain symptom synonyms from SYMPTOM_SEEDS."""
-    toks = _tokenize(text)
-    stems = set(_stem_tokens(toks))
-    expanded = list(toks)
-    for cat, seeds in SYMPTOM_SEEDS.items():
-        if stems & set(_stem_tokens(seeds)):
-            expanded.extend(seeds)
-    return " ".join(expanded) if expanded else text
-
-
 class DenseTransformerRetriever:
-    """Dense Semantic Retriever powered by Sentence Transformers.
+    """Dense Semantic Retriever powered by Sentence Transformers with offline SVD projection."""
 
-    Provides contextual vector retrieval with cosine similarity, clinical assertion
-    detection (negation penalty), and an automatic high-fidelity offline fallback.
-    """
     def __init__(
         self,
         sentences: list[tuple[str, str, str]],
@@ -682,10 +664,13 @@ class DenseTransformerRetriever:
             from sklearn.feature_extraction.text import TfidfVectorizer
             from sklearn.decomposition import TruncatedSVD
 
-            expanded_texts = [_expand_clinical_terms(s[0]) for s in sentences]
-            self._fallback_tfidf = TfidfVectorizer(max_features=2500, ngram_range=(1, 2))
-            X_sparse = self._fallback_tfidf.fit_transform(expanded_texts)
-            n_components = min(64, max(2, len(expanded_texts) - 1))
+            def _stem_tokens_str(text: str) -> list[str]:
+                return [_STEMMER.stem(w) for w in _tokenize(text)]
+
+            self._stem_tokenizer = _stem_tokens_str
+            self._fallback_tfidf = TfidfVectorizer(tokenizer=_stem_tokens_str, token_pattern=None, ngram_range=(1, 2))
+            X_sparse = self._fallback_tfidf.fit_transform(raw_texts)
+            n_components = min(32, max(2, len(raw_texts) - 1))
             self._svd = TruncatedSVD(n_components=n_components, random_state=42)
             dense_proj = self._svd.fit_transform(X_sparse)
             norms = np.linalg.norm(dense_proj, axis=1, keepdims=True) + 1e-9
@@ -695,8 +680,7 @@ class DenseTransformerRetriever:
         if self._model is not None:
             vec = self._model.encode([text], convert_to_numpy=True, normalize_embeddings=True)[0]
             return np.asarray(vec, dtype=np.float32)
-        expanded_q = _expand_clinical_terms(text)
-        X_q = self._fallback_tfidf.transform([expanded_q])
+        X_q = self._fallback_tfidf.transform([text])
         dense_q = self._svd.transform(X_q)
         norm = np.linalg.norm(dense_q) + 1e-9
         return np.asarray(dense_q / norm, dtype=np.float32).flatten()
@@ -713,6 +697,9 @@ class DenseTransformerRetriever:
 
         scored = []
         seen = set()
+
+        content_qtoks = [t for t in qtoks if len(t) >= 4 and t not in {"feel", "look", "looks", "some", "what", "have", "been"}]
+        content_q_stems = {_STEMMER.stem(t) for t in content_qtoks}
 
         for i, sim in enumerate(sims):
             sent_text = self.records[i][0]
@@ -732,11 +719,13 @@ class DenseTransformerRetriever:
                         score *= 0.30
                         break
 
-            overlap = len(set(self.raw_tokens[i]) & set(qtoks))
+            # Meaningful clinical stem overlap
+            sent_stems = {_STEMMER.stem(t) for t in raw_s}
+            overlap = len(content_q_stems & sent_stems)
             if overlap > 0 and assertion != "NEGATED":
-                score = min(0.98, score + 0.10 * overlap)
+                score = min(0.95, score + 0.12 * overlap)
 
-            if score > 0.05:
+            if score > 0.08:
                 seen.add(sent_text)
                 scored.append((score, i, assertion))
 

@@ -25,6 +25,8 @@ QUESTION_STOP = {
     "any","ever","report","reported","experience","experienced","show",
     "showing","mention","mentioned","suffer","suffering","feel","feeling",
     "note","noted","history","of","in","at","on","for","with","and","or",
+    "look","looks","looked","looking","own","get","getting","seem","seems","seemed",
+    "some","what","which","where","who","whom","been","having","also","really",
 }
 
 
@@ -157,12 +159,17 @@ class LLMSynthesizer:
         prompt = self.build_prompt(question, patient_name, findings, citations)
         cloud_resp = call_cloud_llm(prompt, provider=provider, api_key=api_key)
         if cloud_resp and len(cloud_resp.strip()) > 30:
+            narrative = cloud_resp.strip()
+            cit_refs = [f"[{c['note_id']} - {c['date']}]" for c in citations[:4]]
+            if cit_refs and not any(f"[{c['note_id']}" in narrative for c in citations):
+                narrative += f"\n\n**Verified Evidence References:** {', '.join(cit_refs)}"
+
             return {
                 "situation": f"Patient {patient_name} evaluated regarding \"{question}\" (Provider: {provider.upper()}).",
                 "background": f"Synthesized via {provider.upper()} cloud LLM from {len(citations)} verified citation(s).",
-                "assessment": cloud_resp.strip(),
+                "assessment": narrative,
                 "recommendation": "Grounded clinical synthesis ready for attending physician sign-off.",
-                "grounded_narrative": cloud_resp.strip(),
+                "grounded_narrative": narrative,
             }
 
         # 3. Deterministic evidence-grounded clinical synthesizer fallback
@@ -271,10 +278,15 @@ class ClinicalQASystem:
         question: str,
         patient_id: str | None = None,
         top_k: int = 6,
-        provider: str = "groq",
+        provider: str | None = None,
         api_key: str | None = None,
     ) -> dict[str, Any]:
         """Answers a clinical diagnostic question grounded strictly in patient notes."""
+        import os
+        default_prov = os.environ.get("LLM_PROVIDER") or ("gemini" if os.environ.get("GEMINI_API_KEY") else "groq")
+        prov = provider or default_prov
+        key = api_key or os.environ.get(f"{prov.upper()}_API_KEY") or os.environ.get("GEMINI_API_KEY")
+
         clean_q = question.strip()
         if not clean_q:
             return {
@@ -487,15 +499,17 @@ class ClinicalQASystem:
             clinical_status=final_status,
             findings=structured_findings,
             citations=citations,
-            provider=provider,
-            api_key=api_key,
+            provider=prov,
+            api_key=key,
         )
+
+        final_summary = sbar.get("grounded_narrative") or answer_text
 
         return {
             "question": clean_q,
             "patient_id": patient_id,
             "patient_name": p_name,
-            "answer_summary": answer_text,
+            "answer_summary": final_summary,
             "clinical_status": final_status,
             "confidence": confidence,
             "sbar": sbar,

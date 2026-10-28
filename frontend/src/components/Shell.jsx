@@ -178,14 +178,14 @@ export default function Shell() {
       {/* ── Main Content ── */}
       <div className="flex-1 ml-60 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/80 shadow-xs">
+        <header className="sticky top-0 z-30 bg-[#080c14]/90 backdrop-blur-xl border-b border-slate-800/80 shadow-xs">
           <div className="px-8 h-15 flex items-center justify-between gap-4">
             {/* Breadcrumb area */}
-            <div className="flex items-center gap-2 text-[13px] text-slate-500">
-              <Activity className="h-4 w-4 text-blue-600" />
-              <span className="font-bold text-slate-800">Veritas-Clin</span>
-              <ChevronRight className="h-3 w-3 text-slate-400" />
-              <span className="text-slate-500 font-medium">Longitudinal Evidence RAG</span>
+            <div className="flex items-center gap-2 text-[13px] text-slate-400">
+              <Activity className="h-4 w-4 text-blue-500" />
+              <span className="font-bold text-slate-100">Veritas-Clin</span>
+              <ChevronRight className="h-3 w-3 text-slate-600" />
+              <span className="text-slate-400 font-medium">Longitudinal Evidence RAG</span>
             </div>
 
             {/* Right actions */}
@@ -193,25 +193,25 @@ export default function Shell() {
               {/* HIPAA Safe Harbor Trigger */}
               <button
                 onClick={() => setDeidOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[12px] font-semibold transition-all border border-slate-200 shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900/90 hover:bg-slate-800 text-slate-200 rounded-xl text-[12px] font-semibold transition-all border border-slate-700/80 shadow-xs cursor-pointer"
               >
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
                 <span>HIPAA De-ID</span>
               </button>
 
               {/* Generative Model Settings */}
               <button
                 onClick={() => setSettingsOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-[12px] font-semibold transition-all border border-blue-200 shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-950/60 hover:bg-blue-900/60 text-blue-300 rounded-xl text-[12px] font-semibold transition-all border border-blue-800/80 shadow-xs cursor-pointer"
               >
-                <Sparkles className="h-3.5 w-3.5 text-blue-600" />
+                <Sparkles className="h-3.5 w-3.5 text-blue-400" />
                 <span className="capitalize">{llmConfig.provider === 'builtin' ? 'Deterministic Engine' : `${llmConfig.provider} Cloud`}</span>
                 <Settings className="h-3 w-3 text-blue-400 ml-0.5" />
               </button>
 
-              <div className="h-4 border-r border-slate-200 mx-1 hidden sm:block" />
+              <div className="h-4 border-r border-slate-800 mx-1 hidden sm:block" />
 
-              <div className="h-8 w-8 rounded-xl bg-slate-900 text-white flex items-center justify-center text-[11px] font-bold shadow-xs">
+              <div className="h-8 w-8 rounded-xl bg-blue-600 text-white flex items-center justify-center text-[11px] font-bold shadow-xs">
                 MD
               </div>
             </div>
@@ -229,16 +229,16 @@ export default function Shell() {
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-slate-200/70 py-4 bg-white/50 backdrop-blur-sm text-[11px] text-slate-400">
+        <footer className="border-t border-slate-800/80 py-4 bg-[#080c14]/80 backdrop-blur-sm text-[11px] text-slate-500">
           <div className="px-8 max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-700">Veritas-Clin RAG Platform</span>
+              <span className="font-bold text-slate-300">Veritas-Clin RAG Platform</span>
               <span>·</span>
               <span>Evidence-Grounded Clinical Decision Support</span>
               <span>·</span>
-              <span className="text-slate-400 font-mono">Real MTSamples Corpus</span>
+              <span className="text-slate-500 font-mono">Real MTSamples Corpus</span>
             </div>
-            <span className="font-mono text-slate-400">FastAPI + React 19 + Tailwind CSS</span>
+            <span className="font-mono text-slate-500">FastAPI + React 19 + Tailwind CSS</span>
           </div>
         </footer>
       </div>
