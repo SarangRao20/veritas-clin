@@ -34,7 +34,7 @@ def call_cloud_llm(
     prompt: str,
     provider: str = "gemini",
     api_key: str | None = None,
-    timeout: float = 15.0,
+    timeout: float = 25.0,
 ) -> str | None:
     """Invokes a cloud LLM (Gemini, Groq, OpenAI) via lightweight HTTP requests (no local LLM)."""
     import os
@@ -50,7 +50,7 @@ def call_cloud_llm(
 
     try:
         if prov == "gemini":
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
+            gemini_models = ["gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-flash-latest"]
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "systemInstruction": {
@@ -58,17 +58,25 @@ def call_cloud_llm(
                         "text": "You are an evidence-grounded clinical decision support assistant. Formulate clear, structured, physician-grade SBAR consultation notes. Every clinical claim must strictly cite [Note ID - Date]. Clearly state when symptoms are denied, ruled out, or familial."
                     }]
                 },
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 850},
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "maxOutputTokens": 2048,
+                },
             }
             with httpx.Client(timeout=timeout) as client:
-                resp = client.post(url, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            return parts[0].get("text", "")
+                for g_model in gemini_models:
+                    try:
+                        url = f"https://generativelanguage.googleapis.com/v1beta/models/{g_model}:generateContent?key={key}"
+                        resp = client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            candidates = data.get("candidates", [])
+                            if candidates:
+                                parts = candidates[0].get("content", {}).get("parts", [])
+                                if parts and parts[0].get("text"):
+                                    return parts[0].get("text", "")
+                    except Exception:
+                        continue
         elif prov == "groq":
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
