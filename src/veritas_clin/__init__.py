@@ -1,17 +1,3 @@
-"""veritas-clin: evidence-grounded clinical information extraction with calibrated abstention."""
+"""Local report and prescription search using evidence-grounded clinical NLP."""
 
-from .config import SETTINGS
-from .pipeline import ExtractionPipeline
-from .schemas import Claim, Decision, ExtractRequest, ExtractionResponse, FindingType, VerifiedClaim
-
-__version__ = "0.1.0"
-__all__ = [
-    "SETTINGS",
-    "Claim",
-    "Decision",
-    "ExtractRequest",
-    "ExtractionResponse",
-    "ExtractionPipeline",
-    "FindingType",
-    "VerifiedClaim",
-]
+__version__ = "0.2.0"

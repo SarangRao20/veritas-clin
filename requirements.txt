@@ -1,11 +1,9 @@
-torch>=2.1
-transformers>=4.44
-accelerate>=0.34
 fastapi>=0.115
 pydantic>=2.7
 uvicorn[standard]>=0.30
-matplotlib>=3.8
 pytest>=8.0
-
-# CPU-only torch install (no GPU needed for the heuristic pipeline / tests):
-#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+numpy>=1.26
+pypdf>=4.0
+python-multipart>=0.0.9
+rank-bm25>=0.2.2
+sentence-transformers>=3.0

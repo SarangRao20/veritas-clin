@@ -3,9 +3,10 @@ __pycache__/
 *.pyc
 *.egg-info/
 data/*
-!data/mtsamples_samples.json
+!data/demo_documents/
+!data/demo_documents/*.txt
+*.sqlite3
 .ipynb_checkpoints/
 .pytest_cache/
 .env
 .env.*
-
