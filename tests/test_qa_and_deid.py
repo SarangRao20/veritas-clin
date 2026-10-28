@@ -123,6 +123,28 @@ def test_api_qa_endpoint_with_sbar():
         assert len(data["sbar"]["grounded_narrative"]) > 0
 
 
+def test_api_qa_endpoint_with_cloud_provider_params():
+    from fastapi.testclient import TestClient
+    from veritas_clin.serve import app
+    with TestClient(app) as client:
+        resp = client.post(
+            "/api/qa",
+            json={
+                "question": "trouble sleeping",
+                "patient_id": "P001",
+                "provider": "groq",
+                "api_key": "mock_groq_key_test",
+            }
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "sbar" in data
+        # Even with mock key that will fail cloud request, it falls back gracefully
+        assert "grounded_narrative" in data["sbar"]
+        assert len(data["sbar"]["grounded_narrative"]) > 0
+
+
+
 def test_llm_synthesizer_cloud_interface_mock():
     from veritas_clin.clinical_qa import LLMSynthesizer
     syn = LLMSynthesizer(llm_callable=lambda p: "Clinical synthesis: Patient sleep is disturbed [NOTE_01].")

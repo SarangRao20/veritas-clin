@@ -321,6 +321,8 @@ def api_clinical_qa(body: dict):
     question   = (body.get("question") or body.get("query") or "").strip()
     patient_id = body.get("patient_id")
     top_k      = int(body.get("top_k", 6))
+    provider   = body.get("provider", "groq")
+    api_key    = body.get("api_key")
 
     if not question:
         raise HTTPException(400, "question is required")
@@ -329,11 +331,17 @@ def api_clinical_qa(body: dict):
     if qa_sys is None:
         from .clinical_qa import ClinicalQASystem
         corpus, patients = _get_corpus()
-        active_hybrid = _STATE.get("hybrid_ret") or _STATE.get("bilstm_ret") or _STATE["tfidf_ret"]
+        active_hybrid = _STATE.get("hybrid_ret") or _STATE.get("dense_ret") or _STATE.get("bilstm_ret") or _STATE["tfidf_ret"]
         qa_sys = ClinicalQASystem(active_hybrid, corpus, patients or [])
         _STATE["qa_system"] = qa_sys
 
-    return qa_sys.answer_question(question, patient_id=patient_id, top_k=top_k)
+    return qa_sys.answer_question(
+        question,
+        patient_id=patient_id,
+        top_k=top_k,
+        provider=provider,
+        api_key=api_key,
+    )
 
 
 # ── HIPAA Safe Harbor De-Identification (0528) ──────────────────────────────
