@@ -82,7 +82,7 @@ export default function PatientPage() {
             {patient.id}{patient.age ? ` · ${patient.age} yrs` : ''}{patient.gender ? ` · ${patient.gender}` : ''}
           </p>
         </div>
-        <Badge tone="amber">Synthetic demo record</Badge>
+        <Badge tone="blue">MTSamples record (public domain)</Badge>
       </header>
 
       {/* Persistence summary */}

@@ -107,7 +107,7 @@ export default function PipelinePage() {
         <ul className="space-y-2 text-sm text-slate-600 bg-amber-50 border border-amber-200 rounded-lg p-5">
           <li className="flex gap-2">
             <Badge tone="amber" className="shrink-0 h-5">data</Badge>
-            <span className="leading-relaxed">Corpus is hand-authored synthetic text — results demonstrate mechanism, not clinical performance.</span>
+            <span className="leading-relaxed">Notes are real public-domain MTSamples transcriptions, but single-entry with deterministic placeholder dates — the source publishes no visit dates, so longitudinal duration claims are data-driven zeros. The classifier corpus is Reddit research data, not clinical notes.</span>
           </li>
           <li className="flex gap-2">
             <Badge tone="amber" className="shrink-0 h-5">scope</Badge>
@@ -166,7 +166,7 @@ function ResultsTables({ data }) {
             </div>
           ))}
           <p className="text-xs text-slate-400 pt-1">
-            Synthetic Reddit-style corpus — these numbers exercise the pipeline, not clinical performance.
+            Reddit research corpus (r/depression posts) — these numbers exercise the classifier, not clinical performance.
           </p>
         </div>
       )}

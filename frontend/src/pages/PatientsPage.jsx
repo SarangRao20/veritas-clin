@@ -43,8 +43,9 @@ export default function PatientsPage() {
       <header className="space-y-1.5">
         <h1 className="text-xl font-bold tracking-tight text-slate-900">Records</h1>
         <p className="text-sm text-slate-500 max-w-2xl leading-relaxed">
-          Synthetic demo patient records generated for this prototype.
-          No real patient data — these notes exist only to exercise the pipeline.
+          Real medical transcription notes from the public-domain MTSamples corpus
+          (one de-identified sample per record, shown verbatim). The source publishes
+          no visit dates, so records carry deterministic placeholder dates.
         </p>
       </header>
 

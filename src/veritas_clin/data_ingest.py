@@ -17,9 +17,15 @@ MTSAMPLES_CATEGORIES = [
     "Psychiatry / Psychology",
     "Neurology",
     "General Medicine",
+    "SOAP / Chart / Progress Notes",
 ]
 
+# Specialty-first display order (in-domain clinical prose first).
+_SPECIALTY_ORDER = {name: i for i, name in enumerate(MTSAMPLES_CATEGORIES)}
+
+_VENDORED_PATH = SETTINGS.data_dir / "mtsamples_samples.json"
 _DEFAULT_CACHE_PATH = SETTINGS.data_dir / "mtsamples_corpus.json"
+_CACHE_MARKER = "mtsamples-v1"
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9])")
 
@@ -36,8 +42,125 @@ def _clean_sentences(text: str) -> list[str]:
     return cleaned
 
 
-# Authentic transcribed medical narratives modeled after MTSamples clinical categories
-REAL_CLINICAL_NARRATIVES: list[dict[str, Any]] = [
+def _mtsamples_note(row: dict, patient_id: str, note_date: date) -> dict:
+    """Converts one vendored MTSamples row into the standard note shape."""
+    text = row.get("transcription", "").replace("\t", " ")
+    sample_name = (row.get("sample_name") or row.get("description") or "").strip()
+    return {
+        "patient_id":  patient_id,
+        "patient_name": sample_name or "MTSamples note",
+        "note_id":     f"{patient_id}_N01",
+        "date":        note_date.isoformat(),
+        "specialty":   (row.get("medical_specialty") or "").strip() or "General Medicine",
+        "title":       sample_name or row.get("description", "").strip()[:70],
+        "condition":   row.get("description", "").strip(),
+        "text":        text,
+        "sentences":   _clean_sentences(text),
+    }
+
+
+def load_mtsamples_corpus(path: Path | None = None) -> tuple[list[dict], list[dict]]:
+    """Builds the one-note-per-record corpus from the vendored real MTSamples subset.
+
+    The source publishes no visit dates; each record receives a deterministic
+    placeholder date so the workbench can still sort and cite timeline entries.
+    Raises FileNotFoundError if the vendored file is absent (callers fall back
+    to the synthetic demo corpus).
+    """
+    src = path or _VENDORED_PATH
+    rows = json.loads(src.read_text(encoding="utf-8"))
+
+    # Deterministic: specialty-first order, then the vendored (CSV) order.
+    rows = sorted(rows, key=lambda r: _SPECIALTY_ORDER.get(r.get("medical_specialty", ""), 99))
+
+    notes: list[dict] = []
+    patients: list[dict] = []
+    base_date = date(2024, 1, 1)
+    for i, row in enumerate(rows):
+        p_id = f"MTS-{i + 1:04d}"
+        note_date = base_date + timedelta(days=i)
+        note = _mtsamples_note(row, p_id, note_date)
+        if not note["sentences"]:
+            continue
+        notes.append(note)
+        patients.append({
+            "id":         p_id,
+            "name":       note["patient_name"],
+            "age":        None,
+            "gender":     "",
+            "condition":  note.get("condition") or note["specialty"],
+            "specialty":  note["specialty"],
+        })
+
+    return notes, patients
+
+
+def load_or_create_clinical_corpus(cache_path: Path | None = None) -> tuple[list[dict], list[dict]]:
+    """Loads the real MTSamples corpus (cached), or the synthetic demo fallback."""
+    target_cache = cache_path or _DEFAULT_CACHE_PATH
+
+    # Preferred path: real public-domain MTSamples transcriptions, keyed by
+    # source files; the cache (sentences pre-split) never leaks into git state
+    # because the vendored file is committed and authoritative.
+    # Cache hit: pre-split sentences are reused on subsequent boots.
+    if target_cache.exists():
+        try:
+            payload = json.loads(target_cache.read_text(encoding="utf-8"))
+            if payload.get("corpus") == _CACHE_MARKER and payload.get("notes") and payload.get("patients"):
+                return payload["notes"], payload["patients"]
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    try:
+        notes, patients = load_mtsamples_corpus()
+        payload = {"corpus": _CACHE_MARKER, "source": "MTSamples (CC0)", "notes": notes, "patients": patients}
+        target_cache.parent.mkdir(parents=True, exist_ok=True)
+        target_cache.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        return notes, patients
+    except FileNotFoundError:
+        pass
+
+    # Fallback: hand-authored synthetic demo corpus.
+    target_cache.parent.mkdir(parents=True, exist_ok=True)
+    base_date = date(2024, 1, 15)
+    notes = []
+    patients = []
+
+    for p_idx, profile in enumerate(SYNTHETIC_LONGITUDINAL_DEMO, start=1):
+        p_id = f"P{p_idx:03d}"
+        patients.append({
+            "id": p_id,
+            "name": profile["patient_name"],
+            "age": profile["age"],
+            "gender": profile["gender"],
+            "condition": profile["condition"],
+            "specialty": profile["specialty"],
+        })
+
+        for n_idx, (entry_text, day_offset) in enumerate(profile["entries"], start=1):
+            entry_date = base_date + timedelta(days=day_offset)
+            note_id = f"{p_id}_N{n_idx:02d}"
+            notes.append({
+                "patient_id": p_id,
+                "patient_name": profile["patient_name"],
+                "note_id": note_id,
+                "date": entry_date.isoformat(),
+                "specialty": profile["specialty"],
+                "title": profile["title"],
+                "text": entry_text,
+                "sentences": _clean_sentences(entry_text),
+            })
+
+    target_cache.write_text(
+        json.dumps({"corpus": "synthetic-v1", "source": "hand-authored demo", "notes": notes, "patients": patients}, indent=2),
+        encoding="utf-8",
+    )
+    return notes, patients
+
+
+# Fallback only: hand-authored synthetic longitudinal demo narratives
+# (kept so the pipeline runs without the vendored public-domain file).
+SYNTHETIC_LONGITUDINAL_DEMO: list[dict[str, Any]] = [
     {
         "specialty": "Psychiatry / Psychology",
         "title": "Psychiatric Consultation - Major Depressive Disorder, Rumination & Insomnia",
@@ -197,44 +320,3 @@ REAL_CLINICAL_NARRATIVES: list[dict[str, Any]] = [
     },
 ]
 
-
-def load_or_create_clinical_corpus(cache_path: Path | None = None) -> tuple[list[dict], list[dict]]:
-    """Loads transcribed clinical corpus from cache, or compiles and caches realistic clinical narratives."""
-    target_cache = cache_path or _DEFAULT_CACHE_PATH
-
-    # Construct standardized longitudinal notes from authentic transcribed clinical records
-    base_date = date(2024, 1, 15)
-    notes: list[dict] = []
-    patients: list[dict] = []
-
-    for p_idx, profile in enumerate(REAL_CLINICAL_NARRATIVES, start=1):
-        p_id = f"P{p_idx:03d}"
-        patients.append({
-            "id": p_id,
-            "name": profile["patient_name"],
-            "age": profile["age"],
-            "gender": profile["gender"],
-            "condition": profile["condition"],
-            "specialty": profile["specialty"],
-        })
-
-        for n_idx, (entry_text, day_offset) in enumerate(profile["entries"], start=1):
-            entry_date = base_date + timedelta(days=day_offset)
-            note_id = f"{p_id}_N{n_idx:02d}"
-            sents = _clean_sentences(entry_text)
-            notes.append({
-                "patient_id": p_id,
-                "patient_name": profile["patient_name"],
-                "note_id": note_id,
-                "date": entry_date.isoformat(),
-                "specialty": profile["specialty"],
-                "title": profile["title"],
-                "text": entry_text,
-                "sentences": sents,
-            })
-
-    payload = {"notes": notes, "patients": patients}
-    target_cache.parent.mkdir(parents=True, exist_ok=True)
-    target_cache.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-
-    return notes, patients

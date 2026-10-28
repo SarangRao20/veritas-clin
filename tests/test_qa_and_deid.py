@@ -89,9 +89,9 @@ def qa_system():
 
 
 def test_clinical_qa_affirms_known_symptom(qa_system):
-    # Aiden Sharma (P001) has sleep insomnia entries
-    ans = qa_system.answer_question("Has the patient had severe trouble sleeping?", patient_id="P001")
-    
+    # MTS-0010 ("Psychiatric Evaluation - 1", real MTSamples text) documents insomnia
+    ans = qa_system.answer_question("Has the patient reported insomnia?", patient_id="MTS-0010")
+
     assert ans["clinical_status"] in ("AFFIRMED", "PARTIALLY_AFFIRMED")
     assert len(ans["findings"]) > 0
     assert len(ans["citations"]) > 0
@@ -100,8 +100,8 @@ def test_clinical_qa_affirms_known_symptom(qa_system):
 
 
 def test_clinical_qa_abstains_on_absent_symptom(qa_system):
-    # Check for completely unmentioned condition
-    ans = qa_system.answer_question("Does the patient have broken femur or asthma attacks?", patient_id="P001")
+    # MTS-0010 mentions insomnia but not femur fracture or asthma
+    ans = qa_system.answer_question("Does the patient have broken femur or asthma attacks?", patient_id="MTS-0010")
     
     assert ans["clinical_status"] == "NO_EVIDENCE"
     assert "No documented clinical evidence" in ans["answer_summary"]
@@ -123,7 +123,7 @@ def test_dense_transformer_retriever_query():
 
 
 def test_clinical_qa_generates_sbar_synthesis(qa_system):
-    ans = qa_system.answer_question("Has the patient had severe trouble sleeping?", patient_id="P001")
+    ans = qa_system.answer_question("Has the patient reported insomnia?", patient_id="MTS-0010")
     assert "sbar" in ans
     sbar = ans["sbar"]
     assert "situation" in sbar and len(sbar["situation"]) > 0

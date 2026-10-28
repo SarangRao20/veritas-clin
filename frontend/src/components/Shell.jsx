@@ -94,7 +94,7 @@ export default function Shell() {
               <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
               <span>
                 Research prototype.<br />
-                Synthetic data only.<br />
+                Public-domain demo data.<br />
                 Not for clinical use.
               </span>
             </div>
@@ -110,7 +110,7 @@ export default function Shell() {
 
         <footer className="border-t border-slate-200 py-3 px-8 bg-white text-[11px] text-slate-500">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 font-mono">
-            <span>Veritas-Clin · academic prototype · synthetic corpus</span>
+            <span>Veritas-Clin · academic prototype · MTSamples public-domain corpus</span>
             <span>extraction → NLI verification → calibrated abstention</span>
           </div>
         </footer>

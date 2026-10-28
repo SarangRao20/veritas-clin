@@ -2,7 +2,8 @@
 __pycache__/
 *.pyc
 *.egg-info/
-data/
+data/*
+!data/mtsamples_samples.json
 .ipynb_checkpoints/
 .pytest_cache/
 .env

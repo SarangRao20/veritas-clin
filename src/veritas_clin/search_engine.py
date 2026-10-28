@@ -785,7 +785,12 @@ class HybridRetriever:
             if r["sentence"] not in sent_map:
                 sent_map[r["sentence"]] = r
 
-        all_sents = set(tf_ranks.keys()) | set(emb_ranks.keys()) | set(lstm_ranks.keys()) | set(dense_ranks.keys())
+        # Candidate pool is anchored on lexical evidence (TF-IDF or the
+        # word-overlap dense retriever). Embedding / LSTM models may surface
+        # sentences purely because their internal geometry is noisy —
+        # especially on large corpora or untrained weights — so they
+        # contribute to RANKING but must not INJECT candidates.
+        all_sents = set(tf_ranks.keys()) | set(dense_ranks.keys())
         k = 60
         scored = []
         q_terms = _tokenize(q)
