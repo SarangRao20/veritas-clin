@@ -30,21 +30,44 @@ QUESTION_STOP = {
 
 def call_cloud_llm(
     prompt: str,
-    provider: str = "groq",
+    provider: str = "gemini",
     api_key: str | None = None,
-    timeout: float = 12.0,
+    timeout: float = 15.0,
 ) -> str | None:
-    """Invokes a cloud LLM (Groq, OpenAI, Gemini) via lightweight HTTP requests (no local LLM)."""
+    """Invokes a cloud LLM (Gemini, Groq, OpenAI) via lightweight HTTP requests (no local LLM)."""
     import os
     import httpx
 
-    prov = (provider or "groq").lower()
-    key = api_key or os.environ.get(f"{prov.upper()}_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    # Resolve provider and API key from arguments or environment
+    default_prov = os.environ.get("LLM_PROVIDER") or ("gemini" if os.environ.get("GEMINI_API_KEY") else "groq")
+    prov = (provider or default_prov).lower()
+    
+    key = api_key or os.environ.get(f"{prov.upper()}_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY") or os.environ.get("GROQ_API_KEY")
     if not key:
         return None
 
     try:
-        if prov == "groq":
+        if prov == "gemini":
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "systemInstruction": {
+                    "parts": [{
+                        "text": "You are an evidence-grounded clinical decision support assistant. Formulate clear, structured, physician-grade SBAR consultation notes. Every clinical claim must strictly cite [Note ID - Date]. Clearly state when symptoms are denied, ruled out, or familial."
+                    }]
+                },
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 850},
+            }
+            with httpx.Client(timeout=timeout) as client:
+                resp = client.post(url, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            return parts[0].get("text", "")
+        elif prov == "groq":
             url = "https://api.groq.com/openai/v1/chat/completions"
             headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
             payload = {
@@ -78,21 +101,6 @@ def call_cloud_llm(
                 if resp.status_code == 200:
                     data = resp.json()
                     return data["choices"][0]["message"]["content"]
-        elif prov == "gemini":
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 800},
-            }
-            with httpx.Client(timeout=timeout) as client:
-                resp = client.post(url, json=payload)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts:
-                            return parts[0].get("text", "")
     except Exception:
         return None
     return None

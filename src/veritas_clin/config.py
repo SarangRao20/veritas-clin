@@ -59,3 +59,17 @@ SETTINGS = Settings()
 def ensure_dirs() -> None:
     for d in (SETTINGS.data_dir, SETTINGS.artifacts_dir, SETTINGS.plots_dir):
         d.mkdir(parents=True, exist_ok=True)
+
+
+def _load_env() -> None:
+    env_file = SETTINGS.root / ".env"
+    if env_file.exists():
+        for line in env_file.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                os.environ.setdefault(key.strip(), val.strip())
+
+
+_load_env()
+
