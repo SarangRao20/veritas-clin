@@ -1,0 +1,29 @@
+SYNTHETIC DEMONSTRATION DOCUMENT — NOT A REAL PATIENT RECORD OR LAB RESULT
+Laboratory Report
+
+PATIENT: [Fictional — no real patient]
+COLLECTION DATE: 2025-04-10
+REPORTED DATE: 2025-04-11
+
+COMPLETE BLOOD COUNT (CBC):
+  WBC: 6.2 x10^3/uL (reference: 4.0-11.0)
+  RBC: 4.85 x10^6/uL (reference: 4.20-5.80)
+  Hemoglobin: 14.1 g/dL (reference: 12.0-16.0)
+  Hematocrit: 42.3% (reference: 36.0-48.0)
+  Platelets: 245 x10^3/uL (reference: 150-400)
+
+BASIC METABOLIC PANEL (BMP):
+  Glucose (fasting): 92 mg/dL (reference: 70-100)
+  BUN: 15 mg/dL (reference: 7-20)
+  Creatinine: 0.9 mg/dL (reference: 0.6-1.2)
+  Sodium: 140 mEq/L (reference: 136-145)
+  Potassium: 4.1 mEq/L (reference: 3.5-5.1)
+  Calcium: 9.4 mg/dL (reference: 8.5-10.5)
+
+THYROID PANEL:
+  TSH: 2.8 mIU/L (reference: 0.4-4.0)
+  Free T4: 1.1 ng/dL (reference: 0.8-1.8)
+
+INTERPRETATION: All values within normal reference ranges. Thyroid function panel obtained to evaluate fatigue; results are unremarkable.
+
+This example contains no patient identifiers and provides no clinical interpretation for real use. It exists to test searches for laboratory panels, reference ranges, and report types.

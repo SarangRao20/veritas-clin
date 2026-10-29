@@ -1,0 +1,28 @@
+SYNTHETIC DEMONSTRATION DOCUMENT — NOT A REAL PATIENT RECORD
+Discharge Summary
+
+PATIENT: [Fictional — no real patient]
+ADMISSION DATE: 2025-05-01
+DISCHARGE DATE: 2025-05-03
+ATTENDING: [Fictional provider]
+
+REASON FOR ADMISSION: Acute exacerbation of anxiety with severe insomnia leading to functional impairment.
+
+HOSPITAL COURSE: The fictional patient was admitted after presenting to the emergency department with a three-day period of near-total sleeplessness accompanied by heightened anxiety and inability to perform daily activities. On admission, vitals were stable and no suicidal ideation was reported. The patient was observed overnight with sleep monitoring. Sertraline was increased from 50 mg to 75 mg daily. Short-term use of melatonin 3 mg at bedtime was initiated. The patient engaged in structured relaxation techniques with the behavioral health team. By hospital day two, the patient achieved six hours of consolidated sleep and reported reduced anxiety. The patient was discharged on hospital day three in stable condition.
+
+DISCHARGE MEDICATIONS:
+1. Sertraline 75 mg — one tablet by mouth once daily
+2. Melatonin 3 mg — one tablet by mouth at bedtime as needed
+3. No controlled substances prescribed
+
+DISCHARGE INSTRUCTIONS:
+- Follow up with outpatient psychiatry within one week
+- Continue sleep diary
+- Avoid caffeine after 12:00 PM
+- Return to emergency department if experiencing thoughts of self-harm or inability to sleep for more than 48 hours
+
+FOLLOW-UP APPOINTMENT: Scheduled for 2025-05-10 with outpatient behavioral health.
+
+MEDICATION RECONCILIATION: Reviewed and reconciled at discharge. No discrepancies identified between admission and discharge medication lists.
+
+This document does not provide instructions for real care. Use it only to test retrieval of terms such as discharge, follow-up, medication list, and hospital course.

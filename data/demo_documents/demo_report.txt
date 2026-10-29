@@ -1,3 +1,19 @@
 SYNTHETIC DEMONSTRATION DOCUMENT — NOT A REAL PATIENT RECORD
-Clinical follow-up report
-The fictional patient reports persistent insomnia and daytime fatigue. Sleep remains disrupted despite a regular bedtime routine. The patient denies suicidal thoughts. This sample is synthetic and intended only to demonstrate document retrieval.
+Clinical Follow-Up Report
+
+CHIEF COMPLAINT: Persistent insomnia and daytime fatigue.
+
+HISTORY OF PRESENT ILLNESS: The fictional patient is a 42-year-old presenting for follow-up regarding chronic insomnia. The patient reports difficulty initiating sleep, with an average sleep onset latency of 45 minutes. Sleep remains disrupted despite maintaining a regular bedtime routine and restricting caffeine intake after noon. The patient denies suicidal ideation, hallucinations, or substance use. Daytime fatigue has worsened, affecting concentration at work.
+
+PAST MEDICAL HISTORY: Generalized anxiety disorder (diagnosed 2021). No prior sleep study.
+
+CURRENT MEDICATIONS: None.
+
+PHYSICAL EXAMINATION: Alert and oriented. No acute distress. Vital signs within normal limits. BMI 24.3.
+
+ASSESSMENT AND PLAN:
+1. Chronic insomnia disorder — recommend sleep hygiene counseling and consider cognitive behavioral therapy for insomnia (CBT-I) as first-line treatment. Sleep diary to be maintained for two weeks.
+2. Generalized anxiety disorder — stable; continue monitoring. Consider referral for psychological evaluation if insomnia does not improve.
+3. Follow-up in four weeks to review sleep diary and assess treatment response.
+
+This sample is synthetic and intended only to demonstrate document retrieval. It does not represent a real patient.

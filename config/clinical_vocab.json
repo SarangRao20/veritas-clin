@@ -1,0 +1,108 @@
+{
+  "symptom_seeds": {
+    "Sadness": ["sad", "unhappy", "miserable", "crying", "tears", "gloomy", "darkness", "dread", "sorrow", "melancholy", "depressed"],
+    "Pessimism": ["hopeless", "pointless", "bleak", "giving up", "despair"],
+    "Past failure": ["failure", "failed", "worthless", "mistake", "regret", "blame"],
+    "Loss of pleasure": ["anhedonia", "anhedonic", "pleasure", "interest", "hobby", "numb", "empty", "hollow", "detached", "disconnected", "joyless"],
+    "Guilty feelings": ["guilty", "guilt", "ashamed", "shame", "blame", "fault", "burden"],
+    "Punishment": ["punish", "deserve", "bad", "fault"],
+    "Self-dislike": ["hate myself", "disgust", "loathe", "self-hatred"],
+    "Self-criticalness": ["self-critical", "criticize", "incompetent", "inadequate"],
+    "Suicidal ideation": ["die", "death", "suicide", "suicidal", "kill", "disappear", "end it all", "self-harm"],
+    "Crying": ["cry", "crying", "tears", "sobbing", "weep"],
+    "Agitation": ["agitated", "agitation", "irritable", "restless", "restlessness", "palpitations", "tachycardia", "tremulousness"],
+    "Loss of interest": ["anhedonia", "motivation", "withdrawn", "isolated", "socially isolated"],
+    "Indecisiveness": ["indecisive", "indecision", "unable to decide", "vacillating"],
+    "Worthlessness": ["worthless", "inferior", "chronic burden"],
+    "Loss of energy": ["exhausted", "fatigue", "lethargy", "leaden limbs", "heavy limbs", "drained of vitality", "profound exhaustion"],
+    "Sleep changes": ["sleep", "sleeping", "insomnia", "awake", "awakening", "sleep latency", "waking at 3am", "early morning awakening", "sleep maintenance", "nocturnal awakening", "restless sleep"],
+    "Irritability": ["irritable", "irritability", "snapping", "frustrated"],
+    "Appetite changes": ["anorexia", "appetite loss", "unintended weight loss", "loss of appetite"],
+    "Concentration": ["concentration", "concentrate", "distracted", "memory lapses", "brain fog", "cognitive slowing", "cognitive fatigue"],
+    "Rumination & Thoughts": ["rumination", "ruminating", "ruminate", "racing thoughts", "intrusive thoughts", "mind wandering", "thought loops", "lost in thought", "lost in thoughts"],
+    "Tiredness": ["tired", "fatigue", "exhaustion", "somnolence", "daytime somnolence"],
+    "Loss of libido": ["libido", "loss of libido", "hypoactive sexual"]
+  },
+  "clinical_sentence_pool": {
+    "sleep": [
+      "I haven't been able to sleep properly for weeks now, tossing and turning until dawn.",
+      "I wake up at 3am drenched in sweat and my mind just spins uncontrollably.",
+      "Waking up multiple times through the night with severe restlessness and heart palpitations.",
+      "Suffering from chronic sleep maintenance insomnia; can rarely fall asleep before 4am.",
+      "My sleep architecture is completely fractured, leaving me exhausted by morning.",
+      "Lying awake for hours listening to the clock tick, feeling utterly drained and fatigued.",
+      "I wake up every ninety minutes and cannot get back into restorative sleep."
+    ],
+    "mood_anhedonia": [
+      "Everything feels pointless. I tried listening to music I used to love but felt completely numb.",
+      "I haven't opened my sketchbook or touched my guitar in over three months.",
+      "A pervasive sense of gloom clings to every single hour of the day.",
+      "I cried uncontrollably for three hours yesterday afternoon without an identifiable trigger.",
+      "Just feeling completely hollow and empty inside, detached from the world.",
+      "Activities that used to bring me joy now feel completely meaningless and exhausting.",
+      "No motivation to pursue any of my usual hobbies; everything feels like a heavy chore."
+    ],
+    "fatigue": [
+      "The physical exhaustion is overwhelming; even climbing the stairs feels like scaling a mountain.",
+      "Overcome by profound exhaustion and heavy limbs by 11am.",
+      "I spent the entire weekend immobilized in bed with zero physical energy.",
+      "Getting dressed in the morning takes all my remaining willpower.",
+      "My body feels like it is made of lead, completely drained of vitality.",
+      "Drained and sluggish; even simple household chores leave me trembling from fatigue."
+    ],
+    "worthless_guilt": [
+      "I feel like such a failure at work and a chronic burden to my family.",
+      "Plagued by irrational guilt over past mistakes that I cannot change.",
+      "Convinced that everyone in my life would be significantly better off without me.",
+      "Constantly feeling worthless and inferior compared to everyone around me.",
+      "I pushed my closest friends away because I feel like such a toxic burden."
+    ],
+    "cognitive": [
+      "I can't concentrate on anything; reading a single work memo takes me six attempts.",
+      "My thoughts feel thick and foggy, completely unable to make basic decisions.",
+      "Constant brain fog and memory lapses making work responsibilities impossible.",
+      "My mind wanders constantly and I find myself staring blankly into space for hours."
+    ],
+    "somatic_appetite": [
+      "Food has completely lost all appeal and taste; eating feels like forcing down cardboard.",
+      "I haven't eaten a proper meal in four days and have lost nearly 3 kg this month.",
+      "Chronic stomach tightness and nausea whenever I try to swallow solid food.",
+      "Persistent headaches and muscle tension in my neck and shoulders every morning."
+    ],
+    "recovery_euthymic": [
+      "Had a genuinely decent week; went for a 40-minute jog by the lake.",
+      "Cooked a warm dinner with my family and felt present and engaged.",
+      "Sleep was deep and restorative last night; woke up at 7am feeling refreshed.",
+      "Completed all assigned tasks at work with steady focus and calm mood.",
+      "Met a colleague for coffee and enjoyed planning upcoming projects.",
+      "Morning mood was steady and optimistic; appetite has returned to baseline.",
+      "Spent the afternoon reading in the park and felt a genuine sense of tranquility.",
+      "Went for a brisk walk with a friend and felt noticeably lighter afterwards."
+    ]
+  },
+  "nlp_stopwords": [
+    "a","an","the","and","or","but","in","on","at","to","for","of","with",
+    "is","are","was","were","be","been","have","has","had","do","does","did",
+    "will","would","could","should","i","me","my","myself","we","us","our","ours",
+    "you","your","yours","he","him","his","himself","she","her","hers","herself",
+    "it","its","itself","they","them","their","theirs","themselves",
+    "this","that","these","those","there","here","what","which","who","how",
+    "very","just","so","get","got","said","also","own",
+    "through","like","felt","much","more","managed","went","came","took","another"
+  ],
+  "negation_words": [
+    "no","not","never","without","none","hardly","barely","cant",
+    "cannot","wont","wouldnt","shouldnt","doesnt","didnt","isnt",
+    "wasnt","havent","hadnt"
+  ],
+  "family_words": [
+    "father", "mother", "sister", "brother", "parent", "parents",
+    "family", "maternal", "paternal", "uncle", "aunt", "sibling"
+  ],
+  "hypothesis_words": [
+    "if", "case", "should", "whenever", "supposing", "would", "might"
+  ],
+  "extended_negation_words": [
+    "denies", "denied", "ruled", "unlikely", "negative"
+  ]
+}

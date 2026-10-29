@@ -1,0 +1,24 @@
+SYNTHETIC DEMONSTRATION DOCUMENT — NOT A REAL PATIENT RECORD
+Follow-Up Visit Note
+
+DATE OF SERVICE: 2025-04-12
+VISIT TYPE: Follow-up, outpatient
+
+SUBJECTIVE: The fictional patient returns for a four-week follow-up. The patient reports interrupted sleep with two to three awakenings per night. Average total sleep time is approximately five hours. Daytime tiredness persists but has improved slightly since starting a sleep diary. The patient is tracking bedtime, wake time, and time to fall asleep each night. The patient denies depressive symptoms, appetite changes, or weight fluctuation. Mild nausea from sertraline has resolved.
+
+OBJECTIVE:
+Vitals: BP 118/76, HR 68, Temp 98.4°F, Weight 165 lbs.
+General: Well-appearing, cooperative, no acute distress.
+Mental status: Alert, oriented x3, mood described as "okay," affect congruent.
+
+ASSESSMENT:
+1. Chronic insomnia — partial response to sleep hygiene measures. Sleep diary shows consistent delayed sleep onset (35-50 minutes) and frequent nocturnal awakenings.
+2. Generalized anxiety disorder — stable on sertraline 25 mg daily. No adverse effects currently reported.
+
+PLAN:
+1. Increase sertraline to 50 mg daily as previously planned.
+2. Refer to behavioral health for CBT-I evaluation.
+3. Continue sleep diary for an additional four weeks.
+4. Return in six weeks or sooner if symptoms worsen.
+
+No diagnosis or treatment recommendation in this sample is intended for real clinical use.

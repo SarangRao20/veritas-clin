@@ -1,37 +1,41 @@
-"""FastAPI app for local, document-grounded clinical NLP search."""
+"""FastAPI application factory — wires MVC layers together."""
 from __future__ import annotations
 
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, Request, Response, UploadFile
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
 
-from .config import DATABASE_PATH, DEMO_DOCUMENTS_DIR, ROOT
-from .document_nlp import DocumentProcessor, EvidenceRetriever, LocalSentenceEmbedder, seed_demo_documents
-from .document_store import DocumentStore
+from .config import CLINICAL_RECORDS_DIR, DATABASE_PATH, DEMO_DOCUMENTS_DIR, ROOT
+from .document_nlp import (
+    DocumentProcessor,
+    EvidenceRetriever,
+    LocalSentenceEmbedder,
+    seed_clinical_records,
+    seed_demo_documents,
+)
+from .services.workflow_trace_service import WorkflowTraceService
+from .models.database import init_schema
 from .response_agent import EvidenceResponseAgent
+from .store.document_store import DocumentStore
+from .store.user_store import UserStore
+from .store.patient_store import PatientStore
+from .controllers import auth as auth_router
+from .controllers import users as users_router
+from .controllers import documents as documents_router
+from .controllers import search as search_router
+from .controllers import patients as patients_router
+from .controllers import analysis as analysis_router
+
+load_dotenv(ROOT / ".env", override=False)
 
 FRONTEND_DIST = ROOT / "frontend" / "dist"
 DEFAULT_DB_PATH = Path(os.getenv("VERITAS_DB_PATH", str(DATABASE_PATH)))
-
-
-class SearchRequest(BaseModel):
-    question: str = Field(min_length=1, max_length=2000)
-    document_id: str | None = None
-    top_k: int = Field(default=6, ge=1, le=20)
-
-
-def _safe_filename(filename: str | None) -> str:
-    cleaned = (filename or "upload").replace("\\", "/").split("/")[-1]
-    cleaned = "".join(char for char in cleaned if char.isprintable()).strip(" .")
-    if not cleaned or len(cleaned) > 255:
-        raise HTTPException(400, "Invalid filename")
-    return cleaned
 
 
 def create_app(
@@ -39,89 +43,84 @@ def create_app(
     embedder=None,
     demo_dir: Path | None = None,
     response_agent: EvidenceResponseAgent | None = None,
+    clinical_dir: Path | None = None,
 ) -> FastAPI:
     path = Path(db_path or DEFAULT_DB_PATH)
     samples_path = Path(demo_dir or DEMO_DOCUMENTS_DIR)
+    clinical_path = (
+        Path(clinical_dir)
+        if clinical_dir is not None
+        else (CLINICAL_RECORDS_DIR if demo_dir is None else None)
+    )
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
-        store = DocumentStore(path)
+        init_schema(path)
         active_embedder = embedder or LocalSentenceEmbedder()
         processor = DocumentProcessor(active_embedder)
-        seed_demo_documents(store, processor, samples_path)
-        application.state.document_store = store
+        doc_store = DocumentStore(path)
+        user_store = UserStore(path)
+        seed_demo_documents(doc_store, processor, samples_path)
+        if clinical_path and clinical_path.is_dir():
+            seed_clinical_records(doc_store, processor, clinical_path)
+        retriever = EvidenceRetriever(doc_store, active_embedder)
+        agent = response_agent or EvidenceResponseAgent()
+        application.state.document_store = doc_store
         application.state.document_processor = processor
-        application.state.evidence_retriever = EvidenceRetriever(store, active_embedder)
-        application.state.response_agent = response_agent or EvidenceResponseAgent()
+        application.state.evidence_retriever = retriever
+        application.state.response_agent = agent
+        application.state.user_store = user_store
+        application.state.patient_store = PatientStore(path)
+        application.state.workflow_service = WorkflowTraceService(doc_store, retriever, agent)
         yield
-        store.close()
 
-    application = FastAPI(title="Veritas-Clin Document Search", version="3.0.0", lifespan=lifespan)
-    origins = [origin.strip() for origin in os.getenv(
-        "VERITAS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
-    ).split(",") if origin.strip()]
-    application.add_middleware(
-        CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE"],
-        allow_headers=["Content-Type"],
+    application = FastAPI(
+        title="Veritas-Clin",
+        version="4.0.0",
+        lifespan=lifespan,
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
     )
 
-    @application.get("/health")
-    def health(request: Request):
+    origins = [o.strip() for o in os.getenv(
+        "VERITAS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+    ).split(",") if o.strip()]
+    application.add_middleware(
+        CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+        allow_headers=["Content-Type", "Authorization"],
+    )
+
+    # ── Health (public) ───────────────────────────────────────────────────────
+    @application.get("/health", tags=["system"])
+    def health():
+        agent = application.state.response_agent
         return {
             "status": "ok",
-            "embedding_model": getattr(getattr(request.app.state, "document_processor", None),
-                                        "embedder", LocalSentenceEmbedder()).model_id,
-            "local_llm_enabled": bool(request.app.state.response_agent.model),
-            "response_model": request.app.state.response_agent.model or None,
+            "embedding_model": getattr(
+                getattr(application.state, "document_processor", None),
+                "embedder", LocalSentenceEmbedder()
+            ).model_id,
+            "llm_enabled": agent.enabled,
+            "llm_provider": agent.provider or None,
+            "response_model": agent.model or None,
         }
 
-    @application.post("/api/documents")
-    async def upload_document(request: Request, file: UploadFile = File(...)):
-        filename = _safe_filename(file.filename)
-        content = await file.read(5 * 1024 * 1024 + 1)
-        try:
-            passages = request.app.state.document_processor.extract_and_chunk(
-                filename, file.content_type or "", content
-            )
-            extracted_text = "\n".join(passage["text"] for passage in passages)
-            document_id = request.app.state.document_store.add_document(
-                filename, file.content_type or "", extracted_text, passages,
-                request.app.state.document_processor.embedder.model_id,
-            )
-        except ValueError as exc:
-            raise HTTPException(400, str(exc)) from exc
-        except Exception as exc:
-            # Keep internal extraction/model/database details out of the response.
-            raise HTTPException(500, "Document could not be indexed") from exc
+    # ── Routers ───────────────────────────────────────────────────────────────
+    application.include_router(auth_router.router)
+    application.include_router(users_router.router)
+    application.include_router(documents_router.router)
+    application.include_router(search_router.router)
+    application.include_router(patients_router.router)
+    application.include_router(analysis_router.router)
 
-        document = next(doc for doc in request.app.state.document_store.list_documents()
-                        if doc["document_id"] == document_id)
-        return document
-
-    @application.get("/api/documents")
-    def list_documents(request: Request):
-        return request.app.state.document_store.list_documents()
-
-    @application.delete("/api/documents/{document_id}", status_code=204)
-    def delete_document(document_id: str, request: Request):
-        if not request.app.state.document_store.delete_document(document_id):
-            raise HTTPException(404, "Document not found")
-        return Response(status_code=204)
-
-    @application.post("/api/search")
-    def search_documents(body: SearchRequest, request: Request):
-        evidence = request.app.state.evidence_retriever.search(
-            body.question.strip(), body.document_id, body.top_k
-        )
-        result = request.app.state.response_agent.answer(body.question.strip(), evidence)
-        result["evidence"] = evidence
-        return result
-
+    # ── Frontend SPA serving ──────────────────────────────────────────────────
     if (FRONTEND_DIST / "assets").is_dir():
         application.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
     @application.api_route("/{full_path:path}", methods=["GET", "HEAD"], response_class=FileResponse)
     def spa(full_path: str):
+        if full_path == "api" or full_path.startswith("api/"):
+            raise HTTPException(404, "API endpoint not found")
         candidate = (FRONTEND_DIST / full_path).resolve()
         if FRONTEND_DIST.resolve() in candidate.parents and candidate.is_file():
             return FileResponse(candidate)

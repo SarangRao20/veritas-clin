@@ -138,10 +138,14 @@ def test_demo_seed_is_labeled_and_idempotent(tmp_path):
     (fixture_dir / "sample_report.txt").write_text(
         "Synthetic example only. Patient reports insomnia and low mood.", encoding="utf-8"
     )
+    (fixture_dir / "sample_prescription.txt").write_text(
+        "Synthetic example only. Example prescription contains no real patient data.", encoding="utf-8"
+    )
 
     seed_demo_documents(store, processor, fixture_dir)
     seed_demo_documents(store, processor, fixture_dir)
 
-    assert len(store.list_documents()) == 1
-    assert store.list_documents()[0]["is_synthetic"] is True
+    documents = store.list_documents()
+    assert len(documents) == 2
+    assert all(document["is_synthetic"] for document in documents)
     store.close()

@@ -1,0 +1,97 @@
+SYNTHETIC DEMONSTRATION DOCUMENT — FOR EDUCATIONAL AND RETRIEVAL TESTING ONLY
+Medication Reference Sheet: Sertraline (Zoloft)
+
+DRUG CLASS: Selective Serotonin Reuptake Inhibitor (SSRI)
+GENERIC NAME: Sertraline hydrochloride
+BRAND NAME: Zoloft (and generics)
+
+THERAPEUTIC INDICATIONS:
+  FDA-Approved: Major depressive disorder (MDD), generalized anxiety disorder (GAD), panic disorder, obsessive-compulsive disorder (OCD), post-traumatic stress disorder (PTSD), social anxiety disorder (social phobia), premenstrual dysphoric disorder (PMDD).
+  Off-label uses: Premature ejaculation, binge eating disorder, body dysmorphic disorder.
+
+MECHANISM OF ACTION:
+Sertraline selectively inhibits neuronal reuptake of serotonin (5-HT) in the presynaptic terminal, increasing serotonin availability in the synaptic cleft. It has minimal effect on norepinephrine or dopamine reuptake. This increased serotonergic transmission is believed to underlie its anxiolytic and antidepressant effects. Full clinical effect typically requires 2 to 6 weeks of treatment.
+
+DOSING — ADULTS:
+  Depression/GAD:
+    Initial: 50 mg once daily (morning or evening)
+    Titration: Increase by 25–50 mg every 1–2 weeks as tolerated
+    Usual effective range: 50–200 mg/day
+    Maximum: 200 mg/day
+  Panic Disorder / PTSD / Social Anxiety:
+    Initial: 25 mg once daily for the first week, then 50 mg/day
+    Maximum: 200 mg/day
+  OCD:
+    Initial: 50 mg/day; range 50–200 mg/day
+  PMDD:
+    25–50 mg/day either continuously or limited to the luteal phase
+
+DOSING — PEDIATRIC:
+  OCD (ages 6–12): Initial 25 mg/day; titrate up to 200 mg/day
+  OCD (ages 13–17): Initial 50 mg/day; titrate up to 200 mg/day
+  MDD: Not FDA-approved for pediatric major depression; use caution
+
+HEPATIC IMPAIRMENT: Use lower dose and longer titration intervals in patients with hepatic impairment.
+
+PHARMACOKINETICS:
+  Bioavailability: Approximately 44%; increases with food (especially a high-fat meal)
+  Time to peak plasma concentration: 4.5–8.4 hours
+  Half-life: ~26 hours (desmethylsertraline active metabolite: 62–104 hours)
+  Protein binding: ~98%
+  Metabolism: Extensive hepatic first-pass metabolism via CYP2C19, CYP2D6, CYP3A4; active metabolite is desmethylsertraline (less potent)
+  Renal excretion: <1% excreted unchanged in urine
+
+CONTRAINDICATIONS:
+  - Concurrent or within 14 days of monoamine oxidase inhibitor (MAOI) use — risk of serotonin syndrome (potentially fatal)
+  - Concurrent use of pimozide — risk of QTc prolongation
+  - Oral liquid formulation contains alcohol: contraindicated with disulfiram or metronidazole
+
+WARNINGS AND PRECAUTIONS:
+  Black Box Warning:
+    Increased risk of suicidal thinking and behavior in children, adolescents, and young adults (18–24 years) with major depressive disorder. Monitor for clinical worsening, agitation, and emergence of suicidal ideation, especially during the first few weeks and after dose changes. Weigh benefits and risks carefully for patients in this age group.
+  Serotonin Syndrome:
+    Can occur especially when combined with other serotonergic drugs (triptans, tramadol, fentanyl, linezolid, St. John's Wort). Symptoms include agitation, tremor, myoclonus, hyperthermia, and autonomic instability. Discontinue immediately if suspected.
+  QTc Prolongation:
+    Use with caution in patients at risk for QTc prolongation (cardiac disease, electrolyte abnormalities, concurrent QT-prolonging medications).
+  Mania/Hypomania Activation:
+    Use with caution in patients with bipolar disorder; screen patients prior to initiation.
+  Hyponatremia/SIADH:
+    Can occur, especially in elderly patients or those on diuretics.
+  Bleeding Risk:
+    May increase risk of abnormal bleeding; use caution with NSAIDs, aspirin, or anticoagulants.
+  Angle-Closure Glaucoma:
+    Serotonergic drugs may trigger pupillary dilation.
+
+COMMON ADVERSE EFFECTS (≥5%):
+  Gastrointestinal: Nausea, diarrhea, dry mouth, dyspepsia, constipation
+  CNS: Insomnia, somnolence, headache, dizziness, tremor, agitation
+  Sexual: Ejaculation failure, decreased libido, anorgasmia
+  Other: Sweating, fatigue, weight changes
+
+DRUG INTERACTIONS (Selected):
+  MAOIs: Absolute contraindication; serotonin syndrome risk
+  Tramadol, triptans (e.g., sumatriptan), fentanyl, linezolid, methylene blue: Serotonin syndrome risk
+  Warfarin: Sertraline may increase anticoagulant effect; monitor INR closely when initiating or adjusting dose
+  CYP2D6 substrates (TCAs, antipsychotics, certain opioids): Sertraline inhibits CYP2D6; monitor for increased substrate toxicity
+  Lithium: Combined use may increase serotonergic effects; monitor
+  NSAIDs / Aspirin / Anticoagulants: Increased bleeding risk
+
+OVERDOSE MANAGEMENT:
+  Contact Poison Control Center (1-800-222-1222 in the US). Supportive care is the mainstay; particularly monitor for serotonin syndrome if co-ingested with other serotonergic agents.
+
+MONITORING PARAMETERS:
+  - Suicidal ideation (especially in the first weeks and following dose changes)
+  - Mood and mental status changes
+  - Sodium levels in at-risk patients
+  - INR if co-prescribed with warfarin
+  - QTc in high-risk patients
+  - Weight over long-term use
+
+DISCONTINUATION:
+  Taper dose gradually to reduce the risk of discontinuation syndrome (dizziness, sensory disturbances, anxiety, irritability, nausea). Abrupt discontinuation is not recommended.
+
+PREGNANCY / LACTATION:
+  Pregnancy: Category C (prior classification). Neonatal adaptation syndrome has been reported. Weigh risks and benefits; discuss with obstetric provider.
+  Lactation: Excreted in human milk in low amounts; considered relatively compatible with breastfeeding but monitor infant.
+
+This reference is entirely synthetic and provided solely for testing search retrieval on topics such as drug mechanism, dosing, contraindications, interactions, and side effects. It does not replace official prescribing information or clinical pharmacist guidance.

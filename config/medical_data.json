@@ -1,0 +1,81 @@
+{
+  "conditions": [
+    "Type 2 Diabetes Mellitus",
+    "Hypertension",
+    "Community-acquired Pneumonia",
+    "Acute Kidney Injury",
+    "Iron Deficiency Anemia",
+    "Chronic Obstructive Pulmonary Disease",
+    "Congestive Heart Failure",
+    "Urinary Tract Infection"
+  ],
+  "modality_qualifiers": ["ruled out", "resolved", "unlikely"],
+  "medications": [
+    {
+      "name": "Metformin",
+      "dosage": "500 mg",
+      "frequency": "twice daily"
+    },
+    {
+      "name": "Amlodipine",
+      "dosage": "5 mg",
+      "frequency": "once daily"
+    },
+    {
+      "name": "Atorvastatin",
+      "dosage": "20 mg",
+      "frequency": "at night"
+    },
+    {
+      "name": "Furosemide",
+      "dosage": "40 mg",
+      "frequency": "once daily"
+    },
+    {
+      "name": "Amoxicillin",
+      "dosage": "875 mg",
+      "frequency": "twice daily for 7 days"
+    },
+    {
+      "name": "Pantoprazole",
+      "dosage": "40 mg",
+      "frequency": "once daily"
+    },
+    {
+      "name": "Losartan",
+      "dosage": "50 mg",
+      "frequency": "once daily"
+    },
+    {
+      "name": "Salbutamol",
+      "dosage": "2 puffs",
+      "frequency": "as needed"
+    }
+  ],
+  "followups": [
+    {
+      "specialty": "Cardiology",
+      "timeframe": "2 weeks"
+    },
+    {
+      "specialty": "Nephrology",
+      "timeframe": "10 days"
+    },
+    {
+      "specialty": "Pulmonology",
+      "timeframe": "3 weeks"
+    },
+    {
+      "specialty": "Primary Care",
+      "timeframe": "7 days"
+    },
+    {
+      "specialty": "Endocrinology",
+      "timeframe": "1 month"
+    },
+    {
+      "specialty": "Infectious Disease",
+      "timeframe": "14 days"
+    }
+  ]
+}

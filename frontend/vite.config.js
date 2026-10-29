@@ -12,6 +12,10 @@ export default defineConfig({
       '/health': 'http://localhost:8000',
       '/api': 'http://localhost:8000',
       '/artifacts': 'http://localhost:8000',
+      '/auth': 'http://localhost:8000',
+      '/analyse': 'http://localhost:8000',
+      '/users': 'http://localhost:8000',
+      '/admin': 'http://localhost:8000',
     },
   },
 })

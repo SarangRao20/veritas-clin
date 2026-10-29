@@ -10,3 +10,8 @@ data/*
 .pytest_cache/
 .env
 .env.*
+
+*.aux
+*.log
+*.out
+*.toc

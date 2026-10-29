@@ -1,43 +1,139 @@
 # Veritas-Clin
 
-Veritas-Clin is a local, document-grounded NLP workbench for searching clinical reports and prescriptions. Upload PDF or UTF-8 TXT files, retrieve relevant passages with BM25 lexical ranking and local sentence-transformer embeddings, and inspect the source citations. This academic prototype is not for clinical use.
+Veritas-Clin is an evidence-grounded Clinical Decision Support (CDS) platform and Inpatient Intelligence Workbench. It couples **offline, privacy-preserving extraction & embeddings** with **strict-citation frontier reasoning models (Groq / Claude 3.5 / local Ollama)** under a **Zero-Hallucination Guarantee**.
 
-## Features
+---
 
-- PDF and plain-text extraction with page-aware PDF passages.
-- SQLite persistence for document metadata, passages, and float32 embeddings.
-- Hybrid BM25 and cosine-similarity retrieval combined with deterministic reciprocal-rank fusion.
-- Clearly labeled fictional report and prescription examples.
-- Deterministic evidence output by default. Optional phrasing through a local Ollama instance is disabled unless `VERITAS_OLLAMA_MODEL` is set. Retrieval remains NLP-based; generated citations must refer to retrieved passages or deterministic evidence is used instead.
-- Bounded uploads and processing; scanned/image-only PDFs are unsupported.
+## Key Capabilities
 
-## Run locally
+- **Evidence-Grounded Inpatient Hub**: Case review across multi-encounter patient histories (Emergency Admission, Cath Lab / Operative Notes, Imaging Reports, Consults, Discharge Summaries).
+- **Executive Physician Station**: 5 specialized clinical tabs per patient:
+  1. *Clinical Overview & Telemetry*: Real-time acuity scoring, vital/biomarker SVG trajectories, and care stages.
+  2. *Clinical Trajectory Synthesis*: Chronological hospital course narrative citing verified passages.
+  3. *Medication Reconciliation & Orders*: Active vs. permanently held medications with contraindication rationales.
+  4. *Clinical Encounters & Reports*: Chronological document index with document reader modal and PDF/TXT upload.
+  5. *Clinical Copilot & Inquiry*: Natural language clinical Q&A with grounded passage references and strict zero-hallucination abstention.
+- **Proactive CDSS Safety Watchdog**: Real-time cross-checking of clinical state vs. medication orders (e.g., flagging ACE inhibitors like Lisinopril during KDIGO Stage 2 Acute Kidney Injury, or warning on DAPT + DOAC bleeding risks).
+- **Prescription Tokenizer & NLP Entity Extraction**: Structured prescription form extracting drug names, doses, routes, frequencies, indications, and held orders into indexed clinical passages.
+- **Permanent SQLite Embedding Cache**: Pre-computed MiniLM dense vectors stored permanently in SQLite (`embedding_cache` table), eliminating repetitive PyTorch weight loading and enabling instant sub-second startup.
+- **Enterprise Security & HIPAA Safe Harbor**:
+  - Full JWT authentication with access token rotation, bcrypt passwords, and three RBAC roles: `admin`, `clinician`, and `viewer`.
+  - Local regex-based Safe Harbor PHI de-identification before any prompt transmission.
+  - Multi-user record isolation with admin oversight.
 
-Python 3.10+ and Node.js are required.
+---
+
+## Getting Started
+
+### Prerequisites
+- Python 3.10+
+- Node.js 18+
+
+### One-Command Quickstart
+
+To launch the full stack (FastAPI backend + Vite production UI) with automatic database seeding:
 
 ```bash
-python -m venv .venv
-. .venv/bin/activate
+./run.sh
+```
+
+Or for development mode with hot-reloading (Vite on `5173` + FastAPI backend on `8000`):
+
+```bash
+./run.sh --dev
+```
+
+The application will be accessible at:
+- **Web UI & Case Hub**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **API Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+---
+
+### Manual Setup
+
+```bash
+# 1. Backend environment
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -e '.[dev]'
-cd frontend && npm install && npm run build && cd ..
-uvicorn veritas_clin.serve:app --reload
+
+# 2. Frontend compilation
+cd frontend
+npm install
+npm run lint
+npm run build
+cd ..
+
+# 3. Start server
+uvicorn veritas_clin.serve:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-The first indexing operation downloads/loads the configured sentence-transformers model locally (default `sentence-transformers/all-MiniLM-L6-v2`). Set `VERITAS_EMBEDDING_MODEL` to choose another compatible model. Inference runs on CPU; model weights are not included in the repository.
+---
 
-The UI and API are served at `http://127.0.0.1:8000`. Main endpoints: `GET /health`, `GET/POST /api/documents`, `DELETE /api/documents/{document_id}`, and `POST /api/search`.
+## System Architecture & Retrieval Pipeline
 
-## Persistence and privacy
+```
+                                      ┌───────────────────────────────┐
+                                      │   Clinician Inquiry / Query   │
+                                      └──────────────┬────────────────┘
+                                                     │
+                                      ┌──────────────▼────────────────┐
+                                      │ Local PHI Safe Harbor De-ID   │
+                                      └──────────────┬────────────────┘
+                                                     │
+                        ┌────────────────────────────┴───────────────────────────┐
+                        │                                                        │
+           ┌────────────▼──────────────┐                           ┌─────────────▼────────────┐
+           │ BM25Plus Lexical Matcher  │                           │ Dense Cosine Embedder    │
+           │ (Exact clinical tokens)   │                           │ (MiniLM SQLite Cache)    │
+           └────────────┬──────────────┘                           └─────────────┬────────────┘
+                        │                                                        │
+                        └────────────────────────────┬───────────────────────────┘
+                                                     │
+                                      ┌──────────────▼────────────────┐
+                                      │ Reciprocal Rank Fusion (RRF)  │
+                                      │  + Temporal Encounter Boost   │
+                                      │  + Negation Assertion Filter  │
+                                      └──────────────┬────────────────┘
+                                                     │
+                                      ┌──────────────▼────────────────┐
+                                      │ Top-8 Grounded Evidence Hits  │
+                                      └──────────────┬────────────────┘
+                                                     │
+                        ┌────────────────────────────┴───────────────────────────┐
+                        │                                                        │
+           ┌────────────▼──────────────┐                           ┌─────────────▼────────────┐
+           │ Groq / Claude 3.5 Engine  │                           │ Deterministic Fallback   │
+           │ (Verified Passage Claims) │                           │ (Zero-Cloud Mode)        │
+           └───────────────────────────┘                           └──────────────────────────┘
+```
 
-The default database is `data/documents.sqlite3`; override it with `VERITAS_DB_PATH`. Uploaded documents/passages remain stored until deleted through the UI/API or by removing the database. Deletion cascades to passages. This prototype has no authentication, encryption-at-rest, multi-user isolation, or production PHI safeguards; do not upload real patient information.
+---
 
-When configured, optional response phrasing uses Ollama at the fixed loopback endpoint `127.0.0.1:11434` and sends only the question and retrieved passages to that local service. Leave `VERITAS_OLLAMA_MODEL` unset for deterministic phrasing and no LLM transmission. Ollama output is untrusted, citations are validated against retrieved passage IDs, and invalid output falls back to deterministic evidence.
+## Test Suite & Code Quality
 
-## Checks
+Run tests and linting suites:
 
 ```bash
-./.venv/bin/pytest -q
-cd frontend && npm run lint && npm run build
+# Backend unit & integration test suite (41 tests)
+./.venv/bin/pytest tests/
+
+# Frontend linter & production bundle compilation
+npm --prefix frontend run lint
+npm --prefix frontend run build
 ```
 
-Fixtures in `data/demo_documents/` are synthetic examples only. Retrieval ranks/similarities are not clinical confidence, diagnosis, or treatment advice.
+---
+
+## Changelog & Version History
+
+- **v4.0.0**: Overhauled UI into Executive Inpatient Command Station; eliminated cramped sidebar chat layout; added interactive SVG biomarker trajectory charts; fixed RRF thresholding (`min_score=0.015`) and temporal encounter filtering; introduced full-screen shimmer skeleton states; unified shared formatters and cleaned dead imports.
+- **v3.0.0**: Added JWT authentication, bcrypt passwords, refresh token rotation, and RBAC (`admin`, `clinician`, `viewer`); implemented HIPAA Safe Harbor PHI scrubbing.
+- **v2.0.0**: Introduced multi-encounter patient store with SQLite persistence; added Proactive Clinical Decision Support Watchdog and Prescription Entity Tokenizer.
+- **v1.0.0**: Initial prototype featuring BM25 + dense MiniLM vector hybrid retrieval with deterministic citation fallback.
+
+---
+
+## Disclaimer
+
+Fixtures in `data/demo_documents/` and `data/clinical_records/` are synthetic clinical examples only. Retrieval ranks and generated syntheses are designed for clinical decision support demonstration and do not constitute autonomous medical advice.

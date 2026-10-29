@@ -1,3 +1,20 @@
 SYNTHETIC DEMONSTRATION DOCUMENT — NOT A REAL PRESCRIPTION
-Example prescription summary
-This fictional example lists sertraline 25 mg once daily for demonstration only. The fictional patient reports mild nausea after starting the medication. This text is synthetic and must not be used to guide treatment or dosing.
+Prescription Summary
+
+PATIENT: [Fictional — no real patient]
+DATE: 2025-03-15
+
+MEDICATION: Sertraline 25 mg tablet
+DIRECTIONS: Take one tablet by mouth once daily in the morning with food.
+QUANTITY: 30 tablets
+REFILLS: 2
+
+INDICATION: Generalized anxiety disorder.
+
+PRESCRIBER NOTES: Starting dose. Increase to 50 mg daily after two weeks if tolerated. Monitor for nausea, headache, and changes in sleep pattern during titration. The patient reports mild nausea after the first week of use; this is a common side effect expected to resolve within 7-10 days. Advise the patient to take with food to reduce gastrointestinal discomfort.
+
+ALLERGIES: No known drug allergies (NKDA).
+
+INTERACTIONS CHECKED: No significant interactions with current medications. Avoid concurrent use with MAOIs.
+
+This text is synthetic and must not be used to guide treatment or dosing. It exists only to demonstrate prescription-related search.

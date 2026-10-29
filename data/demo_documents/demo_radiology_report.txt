@@ -1,0 +1,57 @@
+SYNTHETIC DEMONSTRATION DOCUMENT — NOT A REAL PATIENT RECORD OR IMAGING RESULT
+MRI Brain Report
+
+PATIENT: [Fictional — no real patient]
+STUDY DATE: 2025-04-20
+ORDERING PROVIDER: [Fictional provider]
+MODALITY: MRI Brain without and with contrast, 3T scanner
+CLINICAL INDICATION: Persistent headache and dizziness; rule out intracranial pathology.
+
+TECHNIQUE: Multiplanar, multisequence MRI of the brain was performed on a 3 Tesla magnet without and with intravenous gadolinium-based contrast agent. Sequences include axial T1, T2, FLAIR, DWI/ADC, T2*, and sagittal T1 post-contrast.
+
+FINDINGS:
+
+Brain Parenchyma:
+  Cortex: Normal cortical thickness and sulcal pattern. No focal cortical dysplasia. No gyral swelling or effacement.
+  White matter: No abnormal T2/FLAIR signal intensities. No periventricular demyelinating plaques. No confluent leukoaraiosis.
+  Basal ganglia and thalami: Symmetric in morphology and signal intensity. No lacunar infarcts.
+  Corpus callosum: Intact and normal in morphology and signal.
+  Cerebellum and brainstem: No mass, infarct, hemorrhage, or demyelinating lesion. No tonsillar herniation.
+  Hippocampi: Symmetric without significant atrophy or signal abnormality. No mesial temporal sclerosis.
+
+Ventricular System:
+  Normal caliber of the lateral, third, and fourth ventricles. No hydrocephalus. No midline shift.
+
+Diffusion-Weighted Imaging:
+  No restricted diffusion to suggest acute or subacute infarction.
+
+Susceptibility-Weighted Imaging (T2*):
+  No microhemorrhages, hemosiderin deposits, or cavernous malformations identified.
+
+Post-Contrast Sequences:
+  No abnormal parenchymal, leptomeningeal, or pachymeningeal enhancement. No extra-axial collections.
+
+Vascular Structures:
+  Flow voids of the major intracranial arteries (carotid siphons, middle cerebral arteries, posterior circulation) appear normal bilaterally. No gross vascular malformation identified.
+
+Sella and Parasellar Region:
+  Pituitary gland is normal in size and configuration. No adenoma. No suprasellar mass or compression of the optic chiasm.
+
+Cranial Nerves:
+  The visualized cranial nerves demonstrate no abnormal signal or mass effect.
+
+Orbits: Unremarkable.
+
+Paranasal Sinuses:
+  Mild mucosal thickening in the bilateral maxillary sinuses and ethmoid air cells, likely reflecting reactive mucosal changes or seasonal rhinitis. No air-fluid level.
+
+IMPRESSION:
+1. Normal MRI of the brain without and with gadolinium contrast.
+2. No acute intracranial abnormality, mass lesion, midline shift, herniation, or abnormal enhancement.
+3. No evidence of acute ischemia, demyelination, or hemorrhage.
+4. Incidental mild paranasal sinus mucosal thickening; clinically correlate for rhinosinusitis.
+5. Clinical correlation is recommended for persistent symptoms; if headaches continue, consider neurology referral.
+
+ELECTRONICALLY SIGNED BY: [Fictional Radiologist, MD] — [Fictional Reading Site]
+
+This document is entirely synthetic. It does not represent a real radiology report and must not be used to interpret, guide, or inform any imaging study or clinical decision. It exists only to test retrieval of radiology and neuroimaging terminology.

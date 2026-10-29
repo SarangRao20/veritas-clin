@@ -13,6 +13,7 @@ def _evidence():
 def test_response_agent_uses_only_valid_retrieved_citations():
     agent = EvidenceResponseAgent(
         model="local-model",
+        provider="ollama",
         generator=lambda question, evidence, model: {
             "answer": "The report notes insomnia.", "citations": ["doc1:0"]
         },
@@ -28,6 +29,7 @@ def test_response_agent_uses_only_valid_retrieved_citations():
 def test_response_agent_falls_back_for_unknown_citation_or_failure():
     agent = EvidenceResponseAgent(
         model="local-model",
+        provider="ollama",
         generator=lambda question, evidence, model: {
             "answer": "Unsupported claim.", "citations": ["not-retrieved"]
         },
@@ -35,7 +37,8 @@ def test_response_agent_falls_back_for_unknown_citation_or_failure():
 
     response = agent.answer("What does the report say?", _evidence())
     failed = EvidenceResponseAgent(
-        model="local-model", generator=lambda *args: (_ for _ in ()).throw(RuntimeError())
+        model="local-model", provider="ollama",
+        generator=lambda *args: (_ for _ in ()).throw(RuntimeError()),
     ).answer("What does the report say?", _evidence())
 
     assert response["used_agent"] is False
@@ -44,8 +47,9 @@ def test_response_agent_falls_back_for_unknown_citation_or_failure():
     assert "[doc1:0]" in failed["answer"]
 
 
-def test_response_agent_is_deterministic_when_disabled_and_abstains_without_evidence():
-    agent = EvidenceResponseAgent()
+def test_response_agent_is_deterministic_when_disabled_and_abstains_without_evidence(monkeypatch):
+    monkeypatch.delenv("VERITAS_LLM_PROVIDER", raising=False)
+    agent = EvidenceResponseAgent(provider="", model="")
 
     answer = agent.answer("What does the report say?", _evidence())
     abstention = agent.answer("What does the report say?", [])
@@ -54,3 +58,33 @@ def test_response_agent_is_deterministic_when_disabled_and_abstains_without_evid
     assert answer["citations"] == ["doc1:0"]
     assert abstention["status"] == "NO_EVIDENCE"
     assert abstention["citations"] == []
+
+
+def test_groq_provider_selects_correct_defaults(monkeypatch):
+    monkeypatch.setenv("VERITAS_GROQ_MODEL", "qwen/qwen3.8-27b")
+    agent = EvidenceResponseAgent(provider="groq")
+    assert agent.provider == "groq"
+    assert agent.model == "qwen/qwen3.8-27b"
+    assert agent.enabled is True
+
+
+def test_groq_provider_falls_back_on_generator_failure():
+    agent = EvidenceResponseAgent(
+        model="llama-3.3-70b-versatile",
+        provider="groq",
+        generator=lambda *args: (_ for _ in ()).throw(RuntimeError("api down")),
+    )
+    response = agent.answer("What does the report say?", _evidence())
+
+    assert response["used_agent"] is False
+    assert response["status"] == "EVIDENCE_FOUND"
+    assert "[doc1:0]" in response["answer"]
+
+
+def test_disabled_agent_has_enabled_false(monkeypatch):
+    monkeypatch.delenv("VERITAS_LLM_PROVIDER", raising=False)
+    agent = EvidenceResponseAgent(provider="", model="")
+    assert agent.enabled is False
+
+    agent_default = EvidenceResponseAgent(provider="", model="")
+    assert agent_default.enabled is False
